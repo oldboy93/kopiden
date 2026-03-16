@@ -1,0 +1,28 @@
+name: kopiden_coffee_app_builder
+
+description: Generate fullstack React coffee ordering application for Kopiden by UAY
+
+inputs:
+  - spec/app_spec.md
+  - spec/ui_spec.md
+  - spec/api_spec.md
+  - spec/database_spec.md
+  - spec/payment_spec.md
+
+outputs:
+  - frontend
+  - backend
+  - database
+
+capabilities:
+  - generate_react_frontend
+  - generate_react_backend
+  - generate_supabase_database
+  - generate_midtrans_payment
+  - generate_admin_dashboard
+
+rules:
+  - follow_all_spec_files
+  - mobile_first_design
+  - clean_architecture
+  - modular_components

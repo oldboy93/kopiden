@@ -1,0 +1,15 @@
+frontend:
+  framework: react
+  styling: tailwind
+
+backend:
+  framework: react api layer
+
+database:
+  supabase
+
+auth:
+  supabase_auth_email
+
+payment:
+  midtrans
