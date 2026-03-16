@@ -1,14 +1,14 @@
 # Kopi Den React
 
-Professional Coffee Shop application built with Next.js, Supabase, and Tailwind CSS.
+Aplikasi Kedai Kopi profesional yang dibangun dengan Next.js, Supabase, dan Tailwind CSS.
 
-## Features
+## Fitur
 
-- Modern, responsive UI design
-- Product gallery and menu
-- Shopping cart functionality
-- Secure checkout integration
-- Order tracking
+- Desain UI modern dan responsif
+- Galeri produk dan menu
+- Fungsi keranjang belanja
+- Integrasi checkout yang aman
+- Pelacakan pesanan
 
 ## Tech Stack
 
@@ -17,38 +17,38 @@ Professional Coffee Shop application built with Next.js, Supabase, and Tailwind 
 - **Styling**: Tailwind CSS
 - **Icons**: Lucide React
 
-## Getting Started
+## Memulai
 
-First, run the development server:
+Pertama, jalankan server pengembangan:
 
 ```bash
 npm run dev
-# or
+# atau
 yarn dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Buka [http://localhost:3000](http://localhost:3000) di browser Anda untuk melihat hasilnya.
 
-## Deployment Instructions
+## Instruksi Deployment
 
-### Deploy to Vercel (Recommended)
+### Deploy ke Vercel (Direkomendasikan)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme).
+Cara termudah untuk men-deploy aplikasi Next.js Anda adalah dengan menggunakan [Platform Vercel](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme).
 
-1.  **Push your code** to GitHub (already done).
-2.  **Sign up for Vercel** and connect your GitHub account.
-3.  **Import the project**: Pick the `kopiden` repository.
-4.  **Add Environment Variables**:
-    - Copy the keys from your `.env.local` to the Vercel project settings (Environment Variables).
-    - Necessary variables usually include:
+1.  **Push kode Anda** ke GitHub (sudah dilakukan).
+2.  **Daftar ke Vercel** dan hubungkan akun GitHub Anda.
+3.  **Impor proyek**: Pilih repositori `kopiden`.
+4.  **Tambahkan Variabel Lingkungan (Environment Variables)**:
+    - Salin kunci dari file `.env.local` Anda ke pengaturan proyek Vercel (Environment Variables).
+    - Variabel yang biasanya diperlukan meliputi:
       - `NEXT_PUBLIC_SUPABASE_URL`
       - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
       - `MIDTRANS_SERVER_KEY`
-5.  **Click Deploy**: Vercel will handle the build and give you a live URL.
+5.  **Klik Deploy**: Vercel akan menangani proses build dan memberikan Anda URL live.
 
-### Build Locally
+### Build Secara Lokal
 
-To test the production build locally:
+Untuk menguji build produksi secara lokal:
 
 ```bash
 npm run build
