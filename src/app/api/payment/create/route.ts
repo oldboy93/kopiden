@@ -7,8 +7,19 @@ const snap = new midtransClient.Snap({
   clientKey: process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY as string
 });
 
+interface CreatePaymentRequest {
+  order_id: string;
+  gross_amount: number;
+  customer_details: {
+    first_name: string;
+    email: string;
+    address: string;
+  };
+  items: any[];
+}
+
 export async function POST(request: Request) {
-  const { order_id, gross_amount, customer_details, items } = await request.json();
+  const { order_id, gross_amount, customer_details, items }: CreatePaymentRequest = await request.json();
 
   const parameter = {
     transaction_details: {

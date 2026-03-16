@@ -20,15 +20,17 @@ export async function POST(request: Request) {
     let paymentStatus = 'pending';
 
     if (transactionStatus === 'capture') {
-      if (fraudStatus === 'challenge') {
-        paymentStatus = 'challenge';
-      } else if (fraudStatus === 'accept') {
+      if (fraudStatus === 'accept') {
         paymentStatus = 'paid';
+      } else if (fraudStatus === 'challenge') {
+        paymentStatus = 'pending';
       }
     } else if (transactionStatus === 'settlement') {
       paymentStatus = 'paid';
-    } else if (transactionStatus === 'cancel' || transactionStatus === 'deny' || transactionStatus === 'expire') {
+    } else if (transactionStatus === 'cancel' || transactionStatus === 'deny') {
       paymentStatus = 'failed';
+    } else if (transactionStatus === 'expire') {
+      paymentStatus = 'expired';
     } else if (transactionStatus === 'pending') {
       paymentStatus = 'pending';
     }
