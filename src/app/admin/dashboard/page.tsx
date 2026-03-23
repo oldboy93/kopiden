@@ -9,13 +9,39 @@ import { supabase } from '@/lib/supabase';
 export default function AdminDashboard() {
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statsData, setStatsData] = useState({
+    totalRevenue: 0,
+    totalOrders: 0,
+    activeCustomers: 0,
+    pendingOrders: 0
+  });
   const router = useRouter();
 
   const stats = [
-    { label: 'Total Revenue', value: 'Rp 12.8M', icon: <DollarSign />, color: 'bg-emerald-500' },
-    { label: 'Total Orders', value: '482', icon: <ShoppingBag />, color: 'bg-blue-500' },
-    { label: 'Active Customers', value: '1,204', icon: <Users />, color: 'bg-purple-500' },
-    { label: 'Conversations', value: '+12%', icon: <TrendingUp />, color: 'bg-orange-500' },
+    { 
+      label: 'Total Revenue', 
+      value: `Rp ${(statsData.totalRevenue / 1000000).toFixed(1)}M`, 
+      icon: <DollarSign />, 
+      color: 'bg-emerald-500' 
+    },
+    { 
+      label: 'Total Orders', 
+      value: statsData.totalOrders.toLocaleString('id-ID'), 
+      icon: <ShoppingBag />, 
+      color: 'bg-blue-500' 
+    },
+    { 
+      label: 'Active Customers', 
+      value: statsData.activeCustomers.toLocaleString('id-ID'), 
+      icon: <Users />, 
+      color: 'bg-purple-500' 
+    },
+    { 
+      label: 'Pending Orders', 
+      value: statsData.pendingOrders.toLocaleString('id-ID'), 
+      icon: <TrendingUp />, 
+      color: 'bg-orange-500' 
+    },
   ];
 
   useEffect(() => {
@@ -25,10 +51,55 @@ export default function AdminDashboard() {
         router.push('/admin/login');
         return;
       }
-      fetchOrders();
+      
+      // Fetch stats and orders in parallel
+      await Promise.all([
+        fetchStats(),
+        fetchOrders()
+      ]);
+      setLoading(false);
     }
     checkAuthAndFetch();
   }, [router]);
+
+  async function fetchStats() {
+    try {
+      // Get All Orders Count
+      const { count: totalOrdersCount } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true });
+
+      // Get Total Revenue (where payment_status is 'paid')
+      const { data: revenueData } = await supabase
+        .from('orders')
+        .select('total_price')
+        .eq('payment_status', 'paid');
+      
+      const totalRevenueSum = revenueData?.reduce((acc, curr) => acc + Number(curr.total_price), 0) || 0;
+
+      // Get Active Customers (Unique user_id in orders)
+      const { data: customerData } = await supabase
+        .from('orders')
+        .select('user_id');
+      
+      const uniqueCustomers = new Set(customerData?.map(o => o.user_id)).size;
+
+      // Get Pending Orders Count
+      const { count: pendingCount } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('order_status', 'pending');
+
+      setStatsData({
+        totalRevenue: totalRevenueSum,
+        totalOrders: totalOrdersCount || 0,
+        activeCustomers: uniqueCustomers || 0,
+        pendingOrders: pendingCount || 0
+      });
+    } catch (error) {
+      console.error('Error fetching admin stats:', error);
+    }
+  }
 
   async function fetchOrders() {
       const { data, error } = await supabase
@@ -50,14 +121,13 @@ export default function AdminDashboard() {
       if (data) {
         const formatted = data.map((o: any) => ({
           id: `#${o.id.split('-')[0].toUpperCase()}`,
-          customer: o.profiles?.full_name || 'Unknown Customer',
-          item: o.order_items?.map((item: any) => `${item.quantity}x ${item.menu?.name}`).join(', ') || 'No items',
+          customer: o.profiles?.full_name || 'Pelanggan',
+          item: o.order_items?.map((item: any) => `${item.quantity}x ${item.menu?.name}`).join(', ') || 'Tak ada item',
           status: o.order_status,
-          total: `Rp ${o.total_price.toLocaleString('id-ID')}`
+          total: `Rp ${Number(o.total_price).toLocaleString('id-ID')}`
         }));
         setRecentOrders(formatted);
       }
-      setLoading(false);
     }
 
   return (

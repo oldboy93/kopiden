@@ -73,6 +73,12 @@ export default function AppHeader({
                 Menu
               </Link>
               <Link
+                href="/our-story"
+                className={`transition-colors hover:text-primary ${pathname === '/our-story' ? 'text-primary font-bold' : 'text-gray-500'}`}
+              >
+                Our Story
+              </Link>
+              <Link
                 href="/dashboard"
                 className={`transition-colors hover:text-primary ${pathname === '/dashboard' ? 'text-primary font-bold' : 'text-gray-500'}`}
               >

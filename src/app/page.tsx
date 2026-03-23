@@ -44,7 +44,7 @@ export default function Home() {
               <Link href="/menu" className="px-8 py-4 bg-primary text-white rounded-full text-lg font-bold hover:scale-105 transition-transform shadow-xl shadow-primary/30">
                 Order Now
               </Link>
-              <Link href="/about" className="px-8 py-4 border-2 border-primary text-primary rounded-full text-lg font-bold hover:bg-primary/5 transition-colors">
+              <Link href="/our-story" className="px-8 py-4 border-2 border-primary text-primary rounded-full text-lg font-bold hover:bg-primary/5 transition-colors">
                 Our Story
               </Link>
             </div>
