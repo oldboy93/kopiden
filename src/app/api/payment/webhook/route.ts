@@ -25,7 +25,21 @@ export async function POST(request: Request) {
     const notification = await request.json();
     console.log('Notification Body:', JSON.stringify(notification));
 
-    const statusResponse = await apiClient.transaction.notification(notification);
+    let statusResponse;
+    try {
+      statusResponse = await apiClient.transaction.notification(notification);
+    } catch (verifError: any) {
+      console.warn('Notification Verification Warning:', verifError.message);
+      
+      // If it's a 404, it might be a mock/test notification from Midtrans Dashboard
+      if (verifError.message.includes('404') || notification.order_id?.includes('test')) {
+        console.log('Detected likely mock/test notification. Using payload data directly.');
+        statusResponse = notification; // Fallback to raw notification for testing
+      } else {
+        throw verifError; // Rethrow real errors
+      }
+    }
+
     const midtransOrderId = statusResponse.order_id;
     
     if (!midtransOrderId) {

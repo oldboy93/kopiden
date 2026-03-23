@@ -25,7 +25,11 @@ export default function AdminOrders() {
         .from('orders')
         .select(`
           *,
-          profiles:user_id (full_name, avatar_url)
+          profiles:user_id (full_name),
+          order_items (
+            quantity,
+            menu:menu_id (name)
+          )
         `)
         .order('created_at', { ascending: false });
 
@@ -34,6 +38,7 @@ export default function AdminOrders() {
           id: order.id.slice(0, 8).toUpperCase(),
           rawId: order.id,
           customer: order.profiles?.full_name || 'Anonymous',
+          items: order.order_items?.map((item: any) => `${item.quantity}x ${item.menu?.name}`).join(', ') || 'No items',
           total: `Rp ${order.total_price.toLocaleString('id-ID')}`,
           status: order.order_status,
           paymentStatus: order.payment_status,
