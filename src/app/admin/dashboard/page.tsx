@@ -18,29 +18,29 @@ export default function AdminDashboard() {
   const router = useRouter();
 
   const stats = [
-    { 
-      label: 'Total Revenue', 
-      value: `Rp ${(statsData.totalRevenue / 1000000).toFixed(1)}M`, 
-      icon: <DollarSign />, 
-      color: 'bg-emerald-500' 
+    {
+      label: 'Total Revenue',
+      value: `Rp ${Number(statsData.totalRevenue).toLocaleString('id-ID')}`,
+      icon: <DollarSign />,
+      color: 'bg-emerald-500'
     },
-    { 
-      label: 'Total Orders', 
-      value: statsData.totalOrders.toLocaleString('id-ID'), 
-      icon: <ShoppingBag />, 
-      color: 'bg-blue-500' 
+    {
+      label: 'Total Orders',
+      value: statsData.totalOrders.toLocaleString('id-ID'),
+      icon: <ShoppingBag />,
+      color: 'bg-blue-500'
     },
-    { 
-      label: 'Active Customers', 
-      value: statsData.activeCustomers.toLocaleString('id-ID'), 
-      icon: <Users />, 
-      color: 'bg-purple-500' 
+    {
+      label: 'Active Customers',
+      value: statsData.activeCustomers.toLocaleString('id-ID'),
+      icon: <Users />,
+      color: 'bg-purple-500'
     },
-    { 
-      label: 'Pending Orders', 
-      value: statsData.pendingOrders.toLocaleString('id-ID'), 
-      icon: <TrendingUp />, 
-      color: 'bg-orange-500' 
+    {
+      label: 'Pending Orders',
+      value: statsData.pendingOrders.toLocaleString('id-ID'),
+      icon: <TrendingUp />,
+      color: 'bg-orange-500'
     },
   ];
 
@@ -51,7 +51,7 @@ export default function AdminDashboard() {
         router.push('/admin/login');
         return;
       }
-      
+
       // Fetch stats and orders in parallel
       await Promise.all([
         fetchStats(),
@@ -74,14 +74,14 @@ export default function AdminDashboard() {
         .from('orders')
         .select('total_price')
         .eq('payment_status', 'paid');
-      
+
       const totalRevenueSum = revenueData?.reduce((acc, curr) => acc + Number(curr.total_price), 0) || 0;
 
       // Get Active Customers (Unique user_id in orders)
       const { data: customerData } = await supabase
         .from('orders')
         .select('user_id');
-      
+
       const uniqueCustomers = new Set(customerData?.map(o => o.user_id)).size;
 
       // Get Pending Orders Count
@@ -102,9 +102,9 @@ export default function AdminDashboard() {
   }
 
   async function fetchOrders() {
-      const { data, error } = await supabase
-        .from('orders')
-        .select(`
+    const { data, error } = await supabase
+      .from('orders')
+      .select(`
           id,
           total_price,
           order_status,
@@ -115,20 +115,20 @@ export default function AdminDashboard() {
             menu:menu_id (name)
           )
         `)
-        .order('created_at', { ascending: false })
-        .limit(5);
+      .order('created_at', { ascending: false })
+      .limit(5);
 
-      if (data) {
-        const formatted = data.map((o: any) => ({
-          id: `#${o.id.split('-')[0].toUpperCase()}`,
-          customer: o.profiles?.full_name || 'Pelanggan',
-          item: o.order_items?.map((item: any) => `${item.quantity}x ${item.menu?.name}`).join(', ') || 'Tak ada item',
-          status: o.order_status,
-          total: `Rp ${Number(o.total_price).toLocaleString('id-ID')}`
-        }));
-        setRecentOrders(formatted);
-      }
+    if (data) {
+      const formatted = data.map((o: any) => ({
+        id: `#${o.id.split('-')[0].toUpperCase()}`,
+        customer: o.profiles?.full_name || 'Pelanggan',
+        item: o.order_items?.map((item: any) => `${item.quantity}x ${item.menu?.name}`).join(', ') || 'Tak ada item',
+        status: o.order_status,
+        total: `Rp ${Number(o.total_price).toLocaleString('id-ID')}`
+      }));
+      setRecentOrders(formatted);
     }
+  }
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] flex flex-col md:flex-row">
@@ -163,7 +163,7 @@ export default function AdminDashboard() {
             <p className="text-sm md:text-base text-gray-400">Here's what's happening today at Kopiden.</p>
           </div>
           <div className="flex gap-4">
-             <div className="h-10 w-10 md:h-12 md:w-12 bg-white rounded-full shadow-sm border border-gray-100"></div>
+            <div className="h-10 w-10 md:h-12 md:w-12 bg-white rounded-full shadow-sm border border-gray-100"></div>
           </div>
         </header>
 
@@ -182,42 +182,41 @@ export default function AdminDashboard() {
 
         {/* Recent Orders Table */}
         <div className="bg-white p-6 md:p-10 rounded-3xl md:rounded-[3rem] shadow-sm border border-gray-50">
-           <div className="flex justify-between items-center mb-6 md:mb-8">
-             <h2 className="text-xl md:text-2xl font-bold">Recent Orders</h2>
-             <Link href="/admin/orders" className="text-emerald-500 font-bold hover:underline text-sm md:text-base">View All</Link>
-           </div>
-           <div className="overflow-x-auto">
-             <table className="w-full text-left">
-               <thead>
-                 <tr className="text-gray-400 text-sm uppercase tracking-widest border-b border-gray-50">
-                   <th className="pb-6 px-4">Order ID</th>
-                   <th className="pb-6 px-4">Customer</th>
-                   <th className="pb-6 px-4">Item</th>
-                   <th className="pb-6 px-4">Status</th>
-                   <th className="pb-6 px-4">Total</th>
-                 </tr>
-               </thead>
-               <tbody className="divide-y divide-gray-50">
-                 {recentOrders.map((order, i) => (
-                   <tr key={i} className="hover:bg-emerald-50 transition-colors group">
-                     <td className="py-6 px-4 font-bold">{order.id}</td>
-                     <td className="py-6 px-4 text-gray-600">{order.customer}</td>
-                     <td className="py-6 px-4">{order.item}</td>
-                     <td className="py-6 px-4">
-                       <span className={`px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase ${
-                         order.status === 'Brewing' ? 'bg-orange-100 text-orange-600' : 
-                         order.status === 'Completed' ? 'bg-emerald-100 text-emerald-600' : 
-                         'bg-red-100 text-red-600'
-                       }`}>
-                         {order.status}
-                       </span>
-                     </td>
-                     <td className="py-6 px-4 font-black">{order.total}</td>
-                   </tr>
-                 ))}
-               </tbody>
-             </table>
-           </div>
+          <div className="flex justify-between items-center mb-6 md:mb-8">
+            <h2 className="text-xl md:text-2xl font-bold">Recent Orders</h2>
+            <Link href="/admin/orders" className="text-emerald-500 font-bold hover:underline text-sm md:text-base">View All</Link>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="text-gray-400 text-sm uppercase tracking-widest border-b border-gray-50">
+                  <th className="pb-6 px-4">Order ID</th>
+                  <th className="pb-6 px-4">Customer</th>
+                  <th className="pb-6 px-4">Item</th>
+                  <th className="pb-6 px-4">Status</th>
+                  <th className="pb-6 px-4">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {recentOrders.map((order, i) => (
+                  <tr key={i} className="hover:bg-emerald-50 transition-colors group">
+                    <td className="py-6 px-4 font-bold">{order.id}</td>
+                    <td className="py-6 px-4 text-gray-600">{order.customer}</td>
+                    <td className="py-6 px-4">{order.item}</td>
+                    <td className="py-6 px-4">
+                      <span className={`px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase ${order.status === 'Brewing' ? 'bg-orange-100 text-orange-600' :
+                          order.status === 'Completed' ? 'bg-emerald-100 text-emerald-600' :
+                            'bg-red-100 text-red-600'
+                        }`}>
+                        {order.status}
+                      </span>
+                    </td>
+                    <td className="py-6 px-4 font-black">{order.total}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </main>
     </div>
