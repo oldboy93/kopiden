@@ -67,6 +67,11 @@ export default function AdminOrders() {
     }
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/admin/login');
+  };
+
   return (
     <div className="min-h-screen bg-[#f8f9fa] flex flex-col md:flex-row">
       {/* Sidebar - Same fixed sidebar as Dashboard */}
@@ -83,7 +88,10 @@ export default function AdminOrders() {
             <ShoppingBag size={20} /> <span className="hidden sm:inline">Orders</span>
           </Link>
         </nav>
-        <button className="flex items-center gap-4 p-4 text-red-400 hover:text-red-500 transition-colors">
+        <button 
+          onClick={handleLogout}
+          className="flex items-center gap-4 p-4 text-red-400 hover:text-red-500 transition-colors"
+        >
           <LogOut size={20} /> Logout
         </button>
       </aside>

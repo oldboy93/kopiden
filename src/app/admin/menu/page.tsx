@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { 
   LayoutDashboard, 
   Coffee, 
@@ -16,12 +17,14 @@ import {
   Loader2,
   Image as ImageIcon
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 export default function MenuManagement() {
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
+  const router = useRouter();
   
   // Modal/Delete State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -129,6 +132,11 @@ export default function MenuManagement() {
     }
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/admin/login');
+  };
+
   const filteredItems = menuItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = category === 'All' || item.category === category;
@@ -151,7 +159,10 @@ export default function MenuManagement() {
             <ShoppingBag size={20} /> <span className="hidden sm:inline">Orders</span>
           </Link>
         </nav>
-        <button className="flex items-center gap-4 p-4 text-red-400 hover:text-red-500 transition-colors">
+        <button 
+          onClick={handleLogout}
+          className="flex items-center gap-4 p-4 text-red-400 hover:text-red-500 transition-colors"
+        >
           <LogOut size={20} /> Logout
         </button>
       </aside>

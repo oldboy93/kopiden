@@ -65,30 +65,38 @@ export default function AdminDashboard() {
   async function fetchStats() {
     try {
       // Get All Orders Count
-      const { count: totalOrdersCount } = await supabase
+      const { count: totalOrdersCount, error: countError } = await supabase
         .from('orders')
         .select('*', { count: 'exact', head: true });
 
+      if (countError) console.error('Count Error:', countError);
+
       // Get Total Revenue (where payment_status is 'paid')
-      const { data: revenueData } = await supabase
+      const { data: revenueData, error: revError } = await supabase
         .from('orders')
         .select('total_price')
         .eq('payment_status', 'paid');
+      
+      if (revError) console.error('Revenue Error:', revError);
 
       const totalRevenueSum = revenueData?.reduce((acc, curr) => acc + Number(curr.total_price), 0) || 0;
 
       // Get Active Customers (Unique user_id in orders)
-      const { data: customerData } = await supabase
+      const { data: customerData, error: custError } = await supabase
         .from('orders')
         .select('user_id');
+      
+      if (custError) console.error('Customer Error:', custError);
 
       const uniqueCustomers = new Set(customerData?.map(o => o.user_id)).size;
 
       // Get Pending Orders Count
-      const { count: pendingCount } = await supabase
+      const { count: pendingCount, error: pendingError } = await supabase
         .from('orders')
         .select('*', { count: 'exact', head: true })
         .eq('order_status', 'pending');
+
+      if (pendingError) console.error('Pending Error:', pendingError);
 
       setStatsData({
         totalRevenue: totalRevenueSum,
@@ -97,7 +105,7 @@ export default function AdminDashboard() {
         pendingOrders: pendingCount || 0
       });
     } catch (error) {
-      console.error('Error fetching admin stats:', error);
+      console.error('Catch Error fetching admin stats:', error);
     }
   }
 
@@ -118,6 +126,11 @@ export default function AdminDashboard() {
       .order('created_at', { ascending: false })
       .limit(5);
 
+    if (error) {
+      console.error('Fetch Orders Error:', error);
+      return;
+    }
+
     if (data) {
       const formatted = data.map((o: any) => ({
         id: `#${o.id.split('-')[0].toUpperCase()}`,
@@ -129,6 +142,11 @@ export default function AdminDashboard() {
       setRecentOrders(formatted);
     }
   }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/admin/login');
+  };
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] flex flex-col md:flex-row">
@@ -150,7 +168,10 @@ export default function AdminDashboard() {
             <Settings size={20} /> Settings
           </Link>
         </nav>
-        <button className="flex items-center gap-4 p-4 text-red-400 hover:text-red-500 transition-colors">
+        <button 
+          onClick={handleLogout}
+          className="flex items-center gap-4 p-4 text-red-400 hover:text-red-500 transition-colors"
+        >
           <LogOut size={20} /> Logout
         </button>
       </aside>
