@@ -10,6 +10,14 @@ const apiClient = new midtransClient.Snap({
 
 export const dynamic = 'force-dynamic';
 
+export async function GET() {
+  return new Response('Kopiden Webhook is active. Use POST for notifications.', { status: 200 });
+}
+
+export async function HEAD() {
+  return new Response(null, { status: 200 });
+}
+
 export async function POST(request: Request) {
   console.log('--- Webhook Received ---');
   
