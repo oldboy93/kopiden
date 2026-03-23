@@ -64,21 +64,28 @@ export async function POST(request: Request) {
 
   try {
     const transaction = await snap.createTransaction(parameter);
-    return NextResponse.json(transaction);
+    return NextResponse.json({ 
+      token: transaction.token, 
+      order_id: parameter.transaction_details.order_id 
+    });
   } catch (error: any) {
     console.error('Midtrans API Error:', error);
     
     // 3. Fallback: If "order_id" already exists, create with suffix
     if (error.message.match(/exists|digunakan|used|taken/i)) {
+       const suffixOrderId = `${order_id}__${Math.floor(Date.now() / 1000)}`;
        const suffixParam = {
          ...parameter,
          transaction_details: {
            ...parameter.transaction_details,
-           order_id: `${order_id}__${Math.floor(Date.now() / 1000)}`
+           order_id: suffixOrderId
          }
        };
        const suffixTransaction = await snap.createTransaction(suffixParam);
-       return NextResponse.json(suffixTransaction);
+       return NextResponse.json({ 
+         token: suffixTransaction.token, 
+         order_id: suffixOrderId 
+       });
     }
 
     return NextResponse.json({ error: error.message }, { status: 500 });

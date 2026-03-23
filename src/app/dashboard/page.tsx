@@ -87,16 +87,19 @@ export default function Dashboard() {
         })
       });
 
-      const { token, error } = await response.json();
+      const { token, order_id: midtransOrderId, error } = await response.json();
 
       if (error || !token) {
         throw new Error(error || 'No payment token received');
       }
 
-      // Save token to order for future reuse
+      // Save token and actual midtrans order id for future reuse
       await supabase
         .from('orders')
-        .update({ midtrans_token: token })
+        .update({ 
+          midtrans_token: token,
+          midtrans_order_id: midtransOrderId 
+        })
         .eq('id', order.id);
 
       window.snap.pay(token, {

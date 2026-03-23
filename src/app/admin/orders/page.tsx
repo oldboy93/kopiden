@@ -3,13 +3,14 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Check, X, Eye, Loader2, Banknote, MapPin } from 'lucide-react';
+import { Check, X, Eye, Loader2, Banknote, MapPin, RefreshCw } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import AdminSidebar from '@/components/AdminSidebar';
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -19,67 +20,72 @@ export default function AdminOrders() {
         router.push('/admin/login');
         return;
       }
-      fetchOrders();
+
+      const { data: ordersData } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          profiles:user_id (full_name, avatar_url)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (ordersData) {
+        const formattedOrders = ordersData.map((order: any) => ({
+          id: order.id.slice(0, 8).toUpperCase(),
+          rawId: order.id,
+          customer: order.profiles?.full_name || 'Anonymous',
+          total: `Rp ${order.total_price.toLocaleString('id-ID')}`,
+          status: order.order_status,
+          paymentStatus: order.payment_status,
+          date: new Date(order.created_at).toLocaleDateString('id-ID'),
+          time: new Date(order.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+        }));
+        setOrders(formattedOrders);
+      }
+      setLoading(false);
     }
     checkAuthAndFetch();
   }, [router]);
 
-  async function fetchOrders() {
-    const { data, error } = await supabase
-      .from('orders')
-      .select(`
-        id,
-        total_price,
-        order_status,
-        payment_status,
-        created_at,
-        profiles:user_id (full_name),
-        order_items (
-          quantity,
-          menu:menu_id (name)
-        )
-      `)
-      .order('created_at', { ascending: false });
-
-    if (data) {
-      const formatted = data.map((o: any) => ({
-        rawId: o.id,
-        id: `#${o.id.split('-')[0].toUpperCase()}`,
-        customer: o.profiles?.full_name || 'Unknown',
-        time: new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        items: o.order_items?.map((item: any) => `${item.quantity}x ${item.menu?.name}`).join(', ') || 'No items',
-        status: o.order_status,
-        paymentStatus: o.payment_status,
-        total: `Rp ${o.total_price.toLocaleString('id-ID')}`
-      }));
-      setOrders(formatted);
-    }
-    setLoading(false);
-  }
-
-  const handleUpdateStatus = async (id: string, newStatus: string) => {
+  const handleUpdateStatus = async (orderId: string, status: string) => {
     const { error } = await supabase
       .from('orders')
-      .update({ order_status: newStatus })
-      .eq('id', id);
-    
+      .update({ order_status: status })
+      .eq('id', orderId);
+
     if (!error) {
-       setOrders(prev => prev.map(o => o.rawId === id ? { ...o, status: newStatus } : o));
-    } else {
-       console.error('Failed to update status:', error);
+      setOrders(prev => prev.map(o => o.rawId === orderId ? { ...o, status } : o));
     }
   };
 
-  const handleUpdatePaymentStatus = async (id: string, newStatus: string) => {
+  const handleUpdatePaymentStatus = async (orderId: string, status: string) => {
     const { error } = await supabase
       .from('orders')
-      .update({ payment_status: newStatus })
-      .eq('id', id);
-    
+      .update({ payment_status: status })
+      .eq('id', orderId);
+
     if (!error) {
-       setOrders(prev => prev.map(o => o.rawId === id ? { ...o, paymentStatus: newStatus } : o));
+      setOrders(prev => prev.map(o => o.rawId === orderId ? { ...o, paymentStatus: status } : o));
     } else {
        console.error('Failed to update payment status:', error);
+    }
+  };
+
+  const handleSyncStatus = async (orderId: string) => {
+    setSyncingId(orderId);
+    try {
+      const response = await fetch(`/api/payment/status/${orderId}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setOrders(prev => prev.map(o => o.rawId === orderId ? { ...o, paymentStatus: data.payment_status } : o));
+      } else {
+        alert('Sync Error: ' + (data.error || 'Check Midtrans Sandbox Dashboard'));
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSyncingId(null);
     }
   };
 
@@ -133,6 +139,14 @@ export default function AdminOrders() {
                    <p className="text-2xl font-black">{order.total}</p>
                 </div>
                  <div className="flex items-center gap-3 w-full sm:w-auto mt-4 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-t-0 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => handleSyncStatus(order.rawId)}
+                      disabled={syncingId === order.rawId}
+                      className="flex-grow sm:flex-none h-11 w-full sm:w-12 bg-white border border-gray-100 text-gray-400 rounded-xl flex items-center justify-center hover:text-blue-500 hover:border-blue-100 transition-all disabled:opacity-50"
+                      title="Sync Payment Status"
+                    >
+                      <RefreshCw size={18} className={`sm:w-5 sm:h-5 ${syncingId === order.rawId ? 'animate-spin' : ''}`} />
+                    </button>
                     <Link
                       href={`/order/tracking/${order.rawId}`}
                       className="flex-grow sm:flex-none h-11 w-full sm:w-12 bg-white border border-gray-100 text-gray-400 rounded-xl flex items-center justify-center hover:text-primary hover:border-primary/20 transition-all"
