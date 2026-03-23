@@ -249,14 +249,22 @@ export default function Dashboard() {
                         <div className="font-black text-sm text-[#1a1a1a]">Rp {(order.total_price || 0).toLocaleString('id-ID')}</div>
                       </div>
                     </div>
-                    {order.payment_status === 'pending' && order.order_status === 'pending' && (
-                      <button
-                        onClick={() => handleRetryPayment(order)}
-                        className="bg-primary text-white text-[10px] font-black uppercase px-4 py-1.5 rounded-full shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/order/tracking/${order.id}`}
+                        className="text-[10px] font-black uppercase text-gray-400 hover:text-primary transition-colors px-2 py-1"
                       >
-                        Bayar Sekarang
-                      </button>
-                    )}
+                        Track Order
+                      </Link>
+                      {order.payment_status === 'pending' && order.order_status === 'pending' && (
+                        <button
+                          onClick={() => handleRetryPayment(order)}
+                          className="bg-primary text-white text-[10px] font-black uppercase px-4 py-1.5 rounded-full shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+                        >
+                          Bayar Sekarang
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}

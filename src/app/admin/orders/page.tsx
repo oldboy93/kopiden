@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Check, X, Eye, Loader2, Banknote } from 'lucide-react';
+import { Check, X, Eye, Loader2, Banknote, MapPin } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import AdminSidebar from '@/components/AdminSidebar';
 
@@ -132,32 +132,39 @@ export default function AdminOrders() {
                 <div className="hidden sm:block text-right min-w-[120px]">
                    <p className="text-2xl font-black">{order.total}</p>
                 </div>
-                <div className="flex items-center gap-3 w-full sm:w-auto mt-4 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-t-0 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                   <button 
-                     disabled={order.status === 'completed' || order.status === 'cancelled'}
-                     onClick={() => handleUpdateStatus(order.rawId, 'completed')}
-                     className="flex-grow sm:flex-none h-11 w-full sm:w-12 bg-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-500/20 flex items-center justify-center hover:scale-105 sm:hover:scale-110 transition-transform disabled:opacity-30 disabled:hover:scale-100"
-                     title="Complete Order"
-                   >
-                     <Check size={18} className="sm:w-5 sm:h-5" />
-                   </button>
-                   <button 
-                     disabled={order.paymentStatus === 'paid'}
-                     onClick={() => handleUpdatePaymentStatus(order.rawId, 'paid')}
-                     className="flex-grow sm:flex-none h-11 w-full sm:w-12 bg-white border border-gray-100 text-orange-400 rounded-xl flex items-center justify-center hover:text-emerald-500 hover:border-emerald-100 transition-all disabled:opacity-30"
-                     title="Mark as Paid"
-                   >
-                     <Banknote size={18} className="sm:w-5 sm:h-5" />
-                   </button>
-                   <button 
-                     disabled={order.status === 'completed' || order.status === 'cancelled'}
-                     onClick={() => handleUpdateStatus(order.rawId, 'cancelled')}
-                     className="flex-grow sm:flex-none h-11 w-full sm:w-12 bg-white border border-gray-100 text-gray-400 rounded-xl flex items-center justify-center hover:text-red-500 hover:border-red-100 transition-all disabled:opacity-30"
-                     title="Cancel Order"
-                   >
-                     <X size={18} className="sm:w-5 sm:h-5" />
-                   </button>
-                </div>
+                 <div className="flex items-center gap-3 w-full sm:w-auto mt-4 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-t-0 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Link
+                      href={`/order/tracking/${order.rawId}`}
+                      className="flex-grow sm:flex-none h-11 w-full sm:w-12 bg-white border border-gray-100 text-gray-400 rounded-xl flex items-center justify-center hover:text-primary hover:border-primary/20 transition-all"
+                      title="Track Live Progress"
+                    >
+                      <MapPin size={18} className="sm:w-5 sm:h-5" />
+                    </Link>
+                    <button 
+                      disabled={order.status === 'completed' || order.status === 'cancelled'}
+                      onClick={() => handleUpdateStatus(order.rawId, 'completed')}
+                      className="flex-grow sm:flex-none h-11 w-full sm:w-12 bg-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-500/20 flex items-center justify-center hover:scale-105 sm:hover:scale-110 transition-transform disabled:opacity-30 disabled:hover:scale-100"
+                      title="Complete Order"
+                    >
+                      <Check size={18} className="sm:w-5 sm:h-5" />
+                    </button>
+                    <button 
+                      disabled={order.paymentStatus === 'paid'}
+                      onClick={() => handleUpdatePaymentStatus(order.rawId, 'paid')}
+                      className="flex-grow sm:flex-none h-11 w-full sm:w-12 bg-white border border-gray-100 text-orange-400 rounded-xl flex items-center justify-center hover:text-emerald-500 hover:border-emerald-100 transition-all disabled:opacity-30"
+                      title="Mark as Paid"
+                    >
+                      <Banknote size={18} className="sm:w-5 sm:h-5" />
+                    </button>
+                    <button 
+                      disabled={order.status === 'completed' || order.status === 'cancelled'}
+                      onClick={() => handleUpdateStatus(order.rawId, 'cancelled')}
+                      className="flex-grow sm:flex-none h-11 w-full sm:w-12 bg-white border border-gray-100 text-gray-400 rounded-xl flex items-center justify-center hover:text-red-500 hover:border-red-100 transition-all disabled:opacity-30"
+                      title="Cancel Order"
+                    >
+                      <X size={18} className="sm:w-5 sm:h-5" />
+                    </button>
+                 </div>
              </div>
            ))}
         </div>
