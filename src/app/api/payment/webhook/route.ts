@@ -13,7 +13,9 @@ export async function POST(request: Request) {
 
   try {
     const statusResponse = await apiClient.transaction.notification(notification);
-    const orderId = statusResponse.order_id;
+    const midtransOrderId = statusResponse.order_id;
+    // Extract real order_id from "order_id__timestamp"
+    const orderId = midtransOrderId.includes('__') ? midtransOrderId.split('__')[0] : midtransOrderId;
     const transactionStatus = statusResponse.transaction_status;
     const fraudStatus = statusResponse.fraud_status;
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Script from 'next/script';
 import { supabase } from '@/lib/supabase';
 import AppHeader from '@/components/AppHeader';
 import {
@@ -42,7 +43,14 @@ export default function Dashboard() {
 
       const { data: ordersData } = await supabase
         .from('orders')
-        .select('*')
+        .select(`
+          *,
+          order_items (
+            quantity,
+            price,
+            menu:menu_id (name)
+          )
+        `)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       if (ordersData) setOrders(ordersData);
@@ -55,6 +63,55 @@ export default function Dashboard() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/login');
+  };
+
+  const handleRetryPayment = async (order: any) => {
+    try {
+      const response = await fetch('/api/payment/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          order_id: order.id,
+          gross_amount: order.total_price,
+          customer_details: {
+            first_name: profile?.full_name || 'Customer',
+            email: user?.email,
+            address: 'Stored Address' // In a real app, you'd fetch this or ask again
+          },
+          items: order.order_items.map((item: any) => ({
+            id: item.menu_id,
+            price: item.price,
+            quantity: item.quantity,
+            name: item.menu?.name
+          }))
+        })
+      });
+
+      const { token, error } = await response.json();
+
+      if (error || !token) {
+        throw new Error(error || 'No payment token received');
+      }
+
+      // Save token to order for future reuse
+      await supabase
+        .from('orders')
+        .update({ midtrans_token: token })
+        .eq('id', order.id);
+
+      window.snap.pay(token, {
+        onSuccess: () => {
+          setOrders(prev => prev.map(o => o.id === order.id ? { ...o, payment_status: 'paid', order_status: 'processing' } : o));
+          router.refresh();
+        },
+        onPending: () => {
+          router.refresh();
+        }
+      });
+    } catch (error) {
+      console.error('Retry payment error:', error);
+      alert('Failed to initiate payment. Please try again.');
+    }
   };
 
   const firstName = profile?.full_name?.split(' ')[0] || 'Coffee Lover';
@@ -74,6 +131,10 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#f8f9fa]">
+      <Script 
+        src="https://app.sandbox.midtrans.com/snap/snap.js" 
+        data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
+      />
       <AppHeader title="My Account" />
 
       <div className="container mx-auto px-4 md:px-8 max-w-3xl py-6 md:py-10 pb-28 md:pb-16">
@@ -174,18 +235,28 @@ export default function Dashboard() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                      order.order_status === 'completed' ? 'bg-green-100 text-green-600' :
-                      order.order_status === 'paid' ? 'bg-blue-100 text-blue-600' :
-                      order.order_status === 'pending' ? 'bg-amber-100 text-amber-600' :
-                      'bg-primary/10 text-primary'
-                    }`}>
-                      {order.order_status}
-                    </span>
-                    <div className="text-right">
-                      <div className="font-black text-sm text-[#1a1a1a]">Rp {(order.total_price || 0).toLocaleString('id-ID')}</div>
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <div className="flex items-center gap-3">
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                        order.order_status === 'completed' ? 'bg-green-100 text-green-600' :
+                        order.order_status === 'processing' ? 'bg-blue-100 text-blue-600' :
+                        order.payment_status === 'pending' ? 'bg-amber-100 text-amber-600' :
+                        'bg-primary/10 text-primary'
+                      }`}>
+                        {order.order_status === 'pending' && order.payment_status === 'pending' ? 'Unpaid' : order.order_status}
+                      </span>
+                      <div className="text-right">
+                        <div className="font-black text-sm text-[#1a1a1a]">Rp {(order.total_price || 0).toLocaleString('id-ID')}</div>
+                      </div>
                     </div>
+                    {order.payment_status === 'pending' && order.order_status === 'pending' && (
+                      <button
+                        onClick={() => handleRetryPayment(order)}
+                        className="bg-primary text-white text-[10px] font-black uppercase px-4 py-1.5 rounded-full shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+                      >
+                        Bayar Sekarang
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

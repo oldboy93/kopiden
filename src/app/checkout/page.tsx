@@ -125,7 +125,17 @@ export default function Checkout() {
         })
       });
 
-      const { token } = await response.json();
+      const { token, error: paymentError } = await response.json();
+
+      if (paymentError || !token) {
+        throw new Error(paymentError || 'No payment token received');
+      }
+
+      // Save token to order immediately
+      await supabase
+        .from('orders')
+        .update({ midtrans_token: token })
+        .eq('id', order.id);
 
       // 4. Open Midtrans Snap
       window.snap.pay(token, {

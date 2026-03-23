@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LayoutDashboard, Coffee, ShoppingBag, Settings, LogOut, TrendingUp, Users, DollarSign, Loader2 } from 'lucide-react';
+import { TrendingUp, Users, DollarSign, Loader2, ShoppingBag } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import AdminSidebar from '@/components/AdminSidebar';
 
 export default function AdminDashboard() {
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
@@ -116,6 +117,7 @@ export default function AdminDashboard() {
           id,
           total_price,
           order_status,
+          payment_status,
           created_at,
           profiles:user_id (full_name),
           order_items (
@@ -137,102 +139,83 @@ export default function AdminDashboard() {
         customer: o.profiles?.full_name || 'Pelanggan',
         item: o.order_items?.map((item: any) => `${item.quantity}x ${item.menu?.name}`).join(', ') || 'Tak ada item',
         status: o.order_status,
+        paymentStatus: o.payment_status,
         total: `Rp ${Number(o.total_price).toLocaleString('id-ID')}`
       }));
       setRecentOrders(formatted);
     }
   }
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/admin/login');
-  };
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] flex flex-col md:flex-row">
-      {/* Sidebar */}
-      <aside className="w-full md:w-64 bg-[#1a1a1a] text-white p-6 md:p-8 flex flex-row md:flex-col gap-6 md:gap-12 md:sticky md:top-0 md:h-screen overflow-x-auto whitespace-nowrap md:whitespace-normal no-scrollbar items-center md:items-start z-50">
-        <div className="text-2xl font-black text-emerald-500 hidden md:block">Kopiden.</div>
-        <nav className="flex flex-row md:flex-col gap-2 md:gap-4 flex-grow w-full">
-          <Link href="/admin/dashboard" className="flex items-center gap-2 md:gap-4 px-4 py-3 md:p-4 bg-emerald-500 rounded-xl md:rounded-2xl font-bold flex-shrink-0">
-            <LayoutDashboard size={20} /> <span className="hidden sm:inline">Dashboard</span>
-          </Link>
-          <Link href="/admin/menu" className="flex items-center gap-2 md:gap-4 px-4 py-3 md:p-4 text-gray-400 hover:text-white transition-colors flex-shrink-0">
-            <Coffee size={20} /> <span className="hidden sm:inline">Menu Management</span>
-          </Link>
-          <Link href="/admin/orders" className="flex items-center gap-2 md:gap-4 px-4 py-3 md:p-4 text-gray-400 hover:text-white transition-colors flex-shrink-0">
-            <ShoppingBag size={20} /> <span className="hidden sm:inline">Orders</span>
-          </Link>
-          <div className="mt-12 opacity-20 h-px bg-white"></div>
-          <Link href="/admin/settings" className="flex items-center gap-4 p-4 text-gray-400 hover:text-white transition-colors">
-            <Settings size={20} /> Settings
-          </Link>
-        </nav>
-        <button 
-          onClick={handleLogout}
-          className="flex items-center gap-4 p-4 text-red-400 hover:text-red-500 transition-colors"
-        >
-          <LogOut size={20} /> Logout
-        </button>
-      </aside>
+      <AdminSidebar />
 
       {/* Main Content */}
-      <main className="flex-grow p-6 md:p-12">
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 md:mb-12 gap-6">
+      <main className="flex-grow p-4 sm:p-8 md:p-12 overflow-x-hidden">
+        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 md:mb-12 gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-black text-[#1a1a1a]">Good Morning, Boss!</h1>
-            <p className="text-sm md:text-base text-gray-400">Here's what's happening today at Kopiden.</p>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-[#1a1a1a]">Good Morning, Boss!</h1>
+            <p className="text-xs sm:text-sm md:text-base text-gray-400">Here's what's happening today at Kopiden.</p>
           </div>
           <div className="flex gap-4">
-            <div className="h-10 w-10 md:h-12 md:w-12 bg-white rounded-full shadow-sm border border-gray-100"></div>
+            <div className="h-10 w-10 sm:h-12 sm:w-12 bg-white rounded-full shadow-sm border border-gray-100"></div>
           </div>
         </header>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8 mb-8 md:mb-12">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 md:gap-8 mb-8 md:mb-12">
           {stats.map((stat, i) => (
-            <div key={i} className="bg-white p-5 md:p-6 rounded-3xl md:rounded-[2.5rem] shadow-sm border border-gray-50">
-              <div className={`h-10 w-10 md:h-12 md:w-12 ${stat.color} text-white rounded-xl md:rounded-2xl flex items-center justify-center mb-4 md:mb-6 shadow-lg shadow-emerald-500/10`}>
-                {stat.icon}
+            <div key={i} className="bg-white p-4 sm:p-5 md:p-6 rounded-2xl sm:rounded-3xl md:rounded-[2.5rem] shadow-sm border border-gray-50 flex flex-col items-center sm:items-start text-center sm:text-left">
+              <div className={`h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 ${stat.color} text-white rounded-xl md:rounded-2xl flex items-center justify-center mb-3 sm:mb-4 md:mb-6 shadow-lg shadow-emerald-500/10`}>
+                <span className="scale-75 sm:scale-90 md:scale-100">{stat.icon}</span>
               </div>
-              <p className="text-gray-400 text-xs md:text-sm font-medium mb-1">{stat.label}</p>
-              <h3 className="text-xl md:text-2xl font-black">{stat.value}</h3>
+              <p className="text-gray-400 text-[10px] sm:text-xs md:text-sm font-medium mb-0.5 sm:mb-1">{stat.label}</p>
+              <h3 className="text-sm sm:text-xl md:text-2xl font-black truncate w-full">{stat.value}</h3>
             </div>
           ))}
         </div>
 
         {/* Recent Orders Table */}
-        <div className="bg-white p-6 md:p-10 rounded-3xl md:rounded-[3rem] shadow-sm border border-gray-50">
+        <div className="bg-white p-5 sm:p-6 md:p-10 rounded-[2.5rem] sm:rounded-3xl md:rounded-[3rem] shadow-sm border border-gray-50">
           <div className="flex justify-between items-center mb-6 md:mb-8">
-            <h2 className="text-xl md:text-2xl font-bold">Recent Orders</h2>
-            <Link href="/admin/orders" className="text-emerald-500 font-bold hover:underline text-sm md:text-base">View All</Link>
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold">Recent Orders</h2>
+            <Link href="/admin/orders" className="text-emerald-500 font-bold hover:underline text-xs sm:text-sm md:text-base">View All</Link>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
+          <div className="overflow-x-auto -mx-5 sm:mx-0 px-5 sm:px-0">
+            <table className="w-full text-left min-w-[600px] mb-4">
               <thead>
-                <tr className="text-gray-400 text-sm uppercase tracking-widest border-b border-gray-50">
-                  <th className="pb-6 px-4">Order ID</th>
-                  <th className="pb-6 px-4">Customer</th>
-                  <th className="pb-6 px-4">Item</th>
-                  <th className="pb-6 px-4">Status</th>
-                  <th className="pb-6 px-4">Total</th>
+                <tr className="text-gray-400 text-[10px] sm:text-xs md:text-sm uppercase tracking-widest border-b border-gray-50">
+                  <th className="pb-4 sm:pb-6 px-4">Order ID</th>
+                  <th className="pb-4 sm:pb-6 px-4">Customer</th>
+                  <th className="pb-4 sm:pb-6 px-4">Payment</th>
+                  <th className="pb-4 sm:pb-6 px-4">Status</th>
+                  <th className="pb-4 sm:pb-6 px-4">Total</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-50 text-[12px] sm:text-sm md:text-base">
                 {recentOrders.map((order, i) => (
                   <tr key={i} className="hover:bg-emerald-50 transition-colors group">
-                    <td className="py-6 px-4 font-bold">{order.id}</td>
-                    <td className="py-6 px-4 text-gray-600">{order.customer}</td>
-                    <td className="py-6 px-4">{order.item}</td>
-                    <td className="py-6 px-4">
-                      <span className={`px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase ${order.status === 'Brewing' ? 'bg-orange-100 text-orange-600' :
+                    <td className="py-4 sm:py-6 px-4 font-bold">{order.id}</td>
+                    <td className="py-4 sm:py-6 px-4 text-gray-600">{order.customer}</td>
+                    <td className="py-4 sm:py-6 px-4">
+                      <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${
+                        order.paymentStatus === 'paid' ? 'bg-emerald-500 text-white' :
+                        order.paymentStatus === 'pending' ? 'bg-orange-100 text-orange-600' :
+                        'bg-red-100 text-red-600'
+                      }`}>
+                        {order.paymentStatus}
+                      </span>
+                    </td>
+                    <td className="py-4 sm:py-6 px-4">
+                      <span className={`px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-black tracking-widest uppercase ${order.status === 'Brewing' ? 'bg-orange-100 text-orange-600' :
                           order.status === 'Completed' ? 'bg-emerald-100 text-emerald-600' :
                             'bg-red-100 text-red-600'
                         }`}>
                         {order.status}
                       </span>
                     </td>
-                    <td className="py-6 px-4 font-black">{order.total}</td>
+                    <td className="py-4 sm:py-6 px-4 font-black whitespace-nowrap">{order.total}</td>
                   </tr>
                 ))}
               </tbody>

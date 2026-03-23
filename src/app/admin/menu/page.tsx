@@ -4,10 +4,6 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
-  LayoutDashboard, 
-  Coffee, 
-  ShoppingBag, 
-  LogOut, 
   Plus, 
   Search, 
   MoreVertical, 
@@ -15,9 +11,11 @@ import {
   Trash2,
   X,
   Loader2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Coffee
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import AdminSidebar from '@/components/AdminSidebar';
 
 export default function MenuManagement() {
   const [menuItems, setMenuItems] = useState<any[]>([]);
@@ -132,11 +130,6 @@ export default function MenuManagement() {
     }
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/admin/login');
-  };
-
   const filteredItems = menuItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = category === 'All' || item.category === category;
@@ -145,44 +138,24 @@ export default function MenuManagement() {
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] flex flex-col md:flex-row">
-      {/* Sidebar - Same fixed sidebar as Dashboard */}
-      <aside className="w-full md:w-64 bg-[#1a1a1a] text-white p-6 md:p-8 flex flex-row md:flex-col gap-6 md:gap-12 md:sticky md:top-0 md:h-screen overflow-x-auto whitespace-nowrap md:whitespace-normal no-scrollbar items-center md:items-start z-50">
-        <div className="text-2xl font-black text-emerald-500 hidden md:block">Kopiden.</div>
-        <nav className="flex flex-row md:flex-col gap-2 md:gap-4 flex-grow w-full">
-          <Link href="/admin/dashboard" className="flex items-center gap-2 md:gap-4 px-4 py-3 md:p-4 text-gray-400 hover:text-white transition-colors flex-shrink-0">
-            <LayoutDashboard size={20} /> <span className="hidden sm:inline">Dashboard</span>
-          </Link>
-          <Link href="/admin/menu" className="flex items-center gap-2 md:gap-4 px-4 py-3 md:p-4 bg-emerald-500 rounded-xl md:rounded-2xl font-bold flex-shrink-0">
-            <Coffee size={20} /> <span className="hidden sm:inline">Menu Management</span>
-          </Link>
-          <Link href="/admin/orders" className="flex items-center gap-2 md:gap-4 px-4 py-3 md:p-4 text-gray-400 hover:text-white transition-colors flex-shrink-0">
-            <ShoppingBag size={20} /> <span className="hidden sm:inline">Orders</span>
-          </Link>
-        </nav>
-        <button 
-          onClick={handleLogout}
-          className="flex items-center gap-4 p-4 text-red-400 hover:text-red-500 transition-colors"
-        >
-          <LogOut size={20} /> Logout
-        </button>
-      </aside>
+      <AdminSidebar />
 
-      <main className="flex-grow p-12">
-        <header className="flex justify-between items-end mb-12">
+      <main className="flex-grow p-4 sm:p-8 md:p-12 overflow-x-hidden">
+        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 md:mb-12 gap-6">
           <div>
-            <h1 className="text-3xl font-black text-[#1a1a1a]">Menu Catalog</h1>
-            <p className="text-gray-400">Organize and manage your digital coffee shop.</p>
+            <h1 className="text-2xl sm:text-3xl font-black text-[#1a1a1a]">Menu Catalog</h1>
+            <p className="text-xs sm:text-sm text-gray-400">Organize and manage your digital coffee shop.</p>
           </div>
           <button 
             onClick={() => handleOpenModal()}
-            className="px-6 py-4 bg-[#1a1a1a] text-white rounded-2xl font-bold flex items-center gap-3 hover:bg-emerald-600 transition-all shadow-xl shadow-primary/10"
+            className="w-full sm:w-auto px-6 py-4 bg-[#1a1a1a] text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-emerald-600 transition-all shadow-xl shadow-primary/10"
           >
             <Plus size={20} /> Add New Item
           </button>
         </header>
 
         {/* Toolbar */}
-        <div className="flex gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row gap-4 mb-8">
            <div className="flex-grow relative">
              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
              <input 
@@ -190,13 +163,13 @@ export default function MenuManagement() {
               placeholder="Search menu items..." 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-12 pr-6 py-4 bg-white border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/10 shadow-sm" 
+              className="w-full pl-12 pr-6 py-4 bg-white border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/10 shadow-sm text-sm" 
              />
            </div>
            <select 
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="px-6 py-4 bg-white border border-gray-100 rounded-2xl outline-none shadow-sm font-medium"
+            className="w-full sm:w-auto px-6 py-4 bg-white border border-gray-100 rounded-2xl outline-none shadow-sm font-medium text-sm"
            >
              <option value="All">All Categories</option>
              <option value="Coffee">Coffee</option>
@@ -211,35 +184,35 @@ export default function MenuManagement() {
             <Loader2 className="animate-spin text-emerald-500" size={48} />
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-8">
             {filteredItems.map((item) => (
-              <div key={item.id} className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-gray-100 group hover:border-emerald-500/20 transition-all">
-                <div className="h-48 w-full bg-emerald-50 rounded-[2rem] mb-6 flex items-center justify-center overflow-hidden">
+              <div key={item.id} className="bg-white p-5 sm:p-6 rounded-[2rem] sm:rounded-[2.5rem] shadow-sm border border-gray-100 group hover:border-emerald-500/20 transition-all">
+                <div className="h-40 sm:h-48 w-full bg-emerald-50 rounded-[1.5rem] sm:rounded-[2rem] mb-4 sm:mb-6 flex items-center justify-center overflow-hidden">
                   {item.image_url ? (
                     <img src={item.image_url} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                   ) : (
-                    <Coffee size={48} className="text-emerald-200" />
+                    <Coffee size={40} className="text-emerald-200" />
                   )}
                 </div>
-                <div className="flex justify-between items-start mb-4">
+                <div className="flex justify-between items-start mb-3 sm:mb-4">
                   <div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500 bg-emerald-50 px-3 py-1 rounded-full mb-2 inline-block">{item.category}</span>
-                    <h3 className="text-xl font-bold">{item.name}</h3>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500 bg-emerald-50 px-3 py-1 rounded-full mb-1.5 sm:mb-2 inline-block">{item.category}</span>
+                    <h3 className="text-lg sm:text-xl font-bold leading-tight">{item.name}</h3>
                   </div>
                 </div>
                 <div className="flex justify-between items-end">
-                  <p className="text-2xl font-black text-[#1a1a1a]">Rp {item.price.toLocaleString('id-ID')}</p>
+                  <p className="text-xl sm:text-2xl font-black text-[#1a1a1a]">Rp {item.price.toLocaleString('id-ID')}</p>
                 </div>
-                <div className="mt-8 pt-8 border-t border-gray-100 flex gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-gray-100 flex gap-3 sm:gap-4 md:opacity-0 group-hover:opacity-100 transition-opacity">
                    <button 
                     onClick={() => handleOpenModal(item)}
-                    className="flex-grow py-3 bg-gray-50 text-gray-600 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-50 hover:text-emerald-500 transition-all"
+                    className="flex-grow py-2.5 sm:py-3 bg-gray-50 text-gray-600 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-50 hover:text-emerald-500 transition-all text-sm"
                    >
                     <Edit size={16} /> Edit
                    </button>
                    <button 
                     onClick={() => confirmDelete(item)}
-                    className="flex-grow py-3 bg-red-50 text-red-500 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-red-100 transition-all"
+                    className="flex-grow py-2.5 sm:py-3 bg-red-50 text-red-500 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-red-100 transition-all text-sm"
                    >
                     <Trash2 size={16} /> Delete
                    </button>
@@ -283,19 +256,19 @@ export default function MenuManagement() {
         {/* Add/Edit Modal */}
         {isModalOpen && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-lg rounded-[3rem] p-10 relative shadow-2xl animate-in zoom-in duration-300">
+            <div className="bg-white w-full max-w-lg rounded-[2.5rem] sm:rounded-[3rem] p-6 sm:p-10 relative shadow-2xl animate-in zoom-in duration-300 max-h-[90vh] overflow-y-auto no-scrollbar">
               <button 
                 onClick={() => setIsModalOpen(false)}
-                className="absolute top-8 right-8 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="absolute top-6 right-6 sm:top-8 sm:right-8 p-2 hover:bg-gray-100 rounded-full transition-colors"
               >
-                <X size={24} />
+                <X size={20} className="sm:w-6 sm:h-6" />
               </button>
               
-              <h2 className="text-3xl font-black mb-8 text-[#1a1a1a]">
+              <h2 className="text-2xl sm:text-3xl font-black mb-6 sm:mb-8 text-[#1a1a1a]">
                 {editingItem ? 'Edit Item' : 'New Item'}
               </h2>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
                 <div>
                   <label className="block text-sm font-bold text-gray-400 mb-2">Item Name</label>
                   <input 
