@@ -15,6 +15,51 @@ export default function OrderTracking({ params }: { params: Promise<{ id: string
   const { id } = use(params);
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+
+  const handleConfirmReceipt = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      // 1. Upload to Supabase Storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${id}-${Math.random()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('order-proofs')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // 2. Get Public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('order-proofs')
+        .getPublicUrl(filePath);
+
+      // 3. Update Order in Supabase
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({ 
+          order_status: 'completed',
+          proof_image_url: publicUrl
+        })
+        .eq('id', id);
+
+      if (updateError) throw updateError;
+      
+      // Update local state
+      setOrder((prev: any) => ({ ...prev, order_status: 'completed', proof_image_url: publicUrl }));
+      alert('Terima kasih! Pesanan Anda telah selesai.');
+    } catch (err: any) {
+      console.error('Confirm receipt error:', err);
+      alert('Gagal mengonfirmasi pesanan: ' + err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   useEffect(() => {
     async function fetchOrder() {
@@ -86,7 +131,7 @@ export default function OrderTracking({ params }: { params: Promise<{ id: string
       { label: 'Delivered', icon: <Clock size={20} />, key: 'completed' },
     ];
 
-    const statusOrder = ['pending', 'processing', 'shipped', 'completed'];
+    const statusOrder = ['pending', 'brewing', 'on_the_way', 'completed'];
     const currentIndex = statusOrder.indexOf(status);
 
     return allSteps.map((step, idx) => ({
@@ -155,6 +200,58 @@ export default function OrderTracking({ params }: { params: Promise<{ id: string
                 </div>
              </div>
           </div>
+
+          {/* Confirm Receipt Section */}
+          {order.order_status === 'on_the_way' && (
+            <div className="mt-8 p-8 bg-primary/5 rounded-[2.5rem] border border-primary/10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+              <h3 className="text-xl font-black mb-2 flex items-center gap-2">
+                <CheckCircle2 className="text-primary" size={20} />
+                Pesanan Sudah Sampai?
+              </h3>
+              <p className="text-sm text-gray-400 font-medium mb-6">
+                Mohon ambil foto kopi Anda sebagai bukti penerimaan sebelum menekan tombol konfirmasi.
+              </p>
+              
+              <div className="space-y-4">
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  capture="environment"
+                  onChange={handleConfirmReceipt}
+                  id="proof-upload"
+                  className="hidden"
+                  disabled={uploading}
+                />
+                <label 
+                  htmlFor="proof-upload"
+                  className="w-full flex flex-col items-center justify-center p-8 bg-white border-2 border-dashed border-gray-200 rounded-3xl hover:border-primary/30 cursor-pointer transition-all group"
+                >
+                  {uploading ? (
+                    <Loader2 className="animate-spin text-primary" size={32} />
+                  ) : (
+                    <>
+                      <div className="h-12 w-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300 mb-3 group-hover:scale-110 transition-transform">
+                        <MapPin size={24} />
+                      </div>
+                      <span className="text-sm font-bold text-gray-400 group-hover:text-primary">Ambil Foto Bukti</span>
+                    </>
+                  )}
+                </label>
+              </div>
+            </div>
+          )}
+
+          {order.order_status === 'completed' && order.proof_image_url && (
+            <div className="mt-8 p-8 bg-emerald-50 rounded-[2.5rem] border border-emerald-100 flex items-center gap-6">
+               <div className="h-16 w-16 bg-white rounded-2xl overflow-hidden border border-emerald-50 shrink-0">
+                  <img src={order.proof_image_url} alt="Proof" className="w-full h-full object-cover" />
+               </div>
+               <div>
+                  <h4 className="text-lg font-black text-emerald-600">Pesanan Diterima</h4>
+                  <p className="text-xs text-emerald-400 font-bold uppercase tracking-widest">Terima kasih sudah memesan!</p>
+               </div>
+            </div>
+          )}
         </div>
 
         <Link 

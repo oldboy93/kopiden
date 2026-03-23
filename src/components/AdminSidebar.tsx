@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Coffee, ShoppingBag, LogOut } from 'lucide-react';
+import { LayoutDashboard, Coffee, ShoppingBag, LogOut, Banknote } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function AdminSidebar() {
@@ -18,6 +18,7 @@ export default function AdminSidebar() {
     { href: '/admin/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
     { href: '/admin/menu', label: 'Menu Management', icon: <Coffee size={20} /> },
     { href: '/admin/orders', label: 'Orders', icon: <ShoppingBag size={20} /> },
+    { href: '/admin/vouchers', label: 'Vouchers', icon: <Banknote size={20} /> },
   ];
 
   return (

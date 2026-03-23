@@ -16,7 +16,9 @@ import {
   MapPin,
   Mail,
   User,
-  Package
+  Package,
+  Ticket,
+  X
 } from 'lucide-react';
 
 declare global {
@@ -37,8 +39,15 @@ export default function Checkout() {
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
 
+  // Voucher State
+  const [voucherCode, setVoucherCode] = useState('');
+  const [appliedVoucher, setAppliedVoucher] = useState<any>(null);
+  const [voucherError, setVoucherError] = useState('');
+  const [checkingVoucher, setCheckingVoucher] = useState(false);
+
   const tax = subtotal * 0.1;
-  const total = subtotal + tax;
+  const discountAmount = appliedVoucher ? (subtotal * appliedVoucher.discount_percent / 100) : 0;
+  const total = subtotal + tax - discountAmount;
 
   const router = useRouter();
 
@@ -71,6 +80,33 @@ export default function Checkout() {
 
     getUser();
   }, [router, cart.length, step]);
+
+  const handleApplyVoucher = async () => {
+    if (!voucherCode) return;
+    setCheckingVoucher(true);
+    setVoucherError('');
+    
+    try {
+      const { data, error } = await supabase
+        .from('vouchers')
+        .select('*')
+        .eq('code', voucherCode.toUpperCase())
+        .eq('is_active', true)
+        .single();
+
+      if (error || !data) {
+        setVoucherError('Invalid or expired voucher code');
+        setAppliedVoucher(null);
+      } else {
+        setAppliedVoucher(data);
+        setVoucherError('');
+      }
+    } catch (err) {
+      setVoucherError('Error checking voucher');
+    } finally {
+      setCheckingVoucher(false);
+    }
+  };
 
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,6 +145,17 @@ export default function Checkout() {
 
       if (itemsError) throw itemsError;
 
+    // 2.5 Update Order with Discount if applicable
+    if (appliedVoucher) {
+      await supabase
+        .from('orders')
+        .update({ 
+          voucher_code: appliedVoucher.code,
+          discount_amount: discountAmount 
+        })
+        .eq('id', order.id);
+    }
+
       // 3. Get Snap Token from API
       const response = await fetch('/api/payment/create', {
         method: 'POST',
@@ -116,6 +163,8 @@ export default function Checkout() {
         body: JSON.stringify({
           order_id: order.id,
           gross_amount: total,
+          discount_amount: discountAmount,
+          voucher_code: appliedVoucher?.code,
           customer_details: {
             first_name: fullName,
             email: email,
@@ -379,6 +428,38 @@ export default function Checkout() {
                     <span>Total Pay</span>
                     <span className="text-primary italic">Rp {total.toLocaleString('id-ID')}</span>
                   </div>
+                </div>
+
+                <div className="mt-8 pt-8 border-t border-gray-50">
+                  <label className="text-xs font-black uppercase tracking-widest text-gray-400 mb-2 block">Voucher Code</label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      value={voucherCode}
+                      onChange={(e) => setVoucherCode(e.target.value)}
+                      placeholder="e.g. KOPIDENFREE"
+                      className="flex-grow px-4 py-3 bg-gray-50 rounded-xl border-none focus:ring-2 focus:ring-primary/20 outline-none font-bold uppercase text-sm"
+                    />
+                    <button 
+                      onClick={handleApplyVoucher}
+                      disabled={checkingVoucher || !voucherCode}
+                      className="px-6 py-3 bg-[#1a1a1a] text-white rounded-xl font-bold text-sm hover:bg-black transition-all disabled:opacity-50"
+                    >
+                      {checkingVoucher ? <Loader2 className="animate-spin" size={18} /> : 'Apply'}
+                    </button>
+                  </div>
+                  {voucherError && <p className="text-red-500 text-[10px] font-bold mt-2 uppercase tracking-wider">{voucherError}</p>}
+                  {appliedVoucher && (
+                    <div className="mt-4 p-3 bg-emerald-50 rounded-xl flex items-center justify-between border border-emerald-100">
+                      <div className="flex items-center gap-2 text-emerald-600">
+                        <Ticket size={16} />
+                        <span className="text-xs font-black uppercase tracking-widest">{appliedVoucher.code} (-{appliedVoucher.discount_percent}%)</span>
+                      </div>
+                      <button onClick={() => setAppliedVoucher(null)} className="text-emerald-400 hover:text-emerald-600">
+                        <X size={16} />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-10 p-4 bg-emerald-50/50 rounded-2xl flex items-start gap-3">

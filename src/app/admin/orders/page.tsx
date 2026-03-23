@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Check, X, Eye, Loader2, Banknote, MapPin, RefreshCw } from 'lucide-react';
+import { Check, X, Eye, Loader2, Banknote, MapPin, RefreshCw, Truck, Coffee } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import AdminSidebar from '@/components/AdminSidebar';
 
@@ -14,12 +14,33 @@ export default function AdminOrders() {
   const router = useRouter();
 
   useEffect(() => {
+    async function checkAutoConfirm() {
+      const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+      const { data: oldOrders } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('order_status', 'on_the_way')
+        .lt('updated_at', twoDaysAgo);
+
+      if (oldOrders && oldOrders.length > 0) {
+        const ids = oldOrders.map(o => o.id);
+        await supabase
+          .from('orders')
+          .update({ order_status: 'completed' })
+          .in('id', ids);
+        return true;
+      }
+      return false;
+    }
+
     async function checkAuthAndFetch() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.push('/admin/login');
         return;
       }
+
+      const didAutoConfirm = await checkAutoConfirm();
 
       const { data: ordersData } = await supabase
         .from('orders')
@@ -125,6 +146,7 @@ export default function AdminOrders() {
                        order.status === 'completed' ? 'bg-emerald-100 text-emerald-600' :
                        order.status === 'cancelled' ? 'bg-red-100 text-red-600' :
                        order.status === 'brewing' ? 'bg-orange-100 text-orange-600' :
+                       order.status === 'processing' ? 'bg-blue-100 text-blue-600' :
                        'bg-gray-100 text-gray-600'
                      }`}>
                        {order.status}
@@ -152,18 +174,36 @@ export default function AdminOrders() {
                     >
                       <RefreshCw size={18} className={`sm:w-5 sm:h-5 ${syncingId === order.rawId ? 'animate-spin' : ''}`} />
                     </button>
-                    <Link
-                      href={`/order/tracking/${order.rawId}`}
-                      className="flex-grow sm:flex-none h-11 w-full sm:w-12 bg-white border border-gray-100 text-gray-400 rounded-xl flex items-center justify-center hover:text-primary hover:border-primary/20 transition-all"
-                      title="Track Live Progress"
+
+                    {/* Brewing Action */}
+                    <button 
+                      disabled={(order.status !== 'pending' && order.status !== 'processing') || order.paymentStatus !== 'paid'}
+                      onClick={() => handleUpdateStatus(order.rawId, 'brewing')}
+                      className={`flex-grow sm:flex-none h-11 w-full sm:w-12 rounded-xl flex items-center justify-center transition-all ${
+                        order.status === 'brewing' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-white border border-gray-100 text-gray-400 hover:text-orange-500 hover:border-orange-100'
+                      }`}
+                      title="Start Brewing"
                     >
-                      <MapPin size={18} className="sm:w-5 sm:h-5" />
-                    </Link>
+                      <Coffee size={18} className="sm:w-5 sm:h-5" />
+                    </button>
+
+                    {/* Out for Delivery Action */}
+                    <button 
+                      disabled={order.status !== 'brewing' && order.status !== 'processing' && order.status !== 'pending'}
+                      onClick={() => handleUpdateStatus(order.rawId, 'on_the_way')}
+                      className={`flex-grow sm:flex-none h-11 w-full sm:w-12 rounded-xl flex items-center justify-center transition-all ${
+                        order.status === 'on_the_way' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white border border-gray-100 text-gray-400 hover:text-blue-500 hover:border-blue-100'
+                      }`}
+                      title="Out for Delivery"
+                    >
+                      <Truck size={18} className="sm:w-5 sm:h-5" />
+                    </button>
+
                     <button 
                       disabled={order.status === 'completed' || order.status === 'cancelled'}
                       onClick={() => handleUpdateStatus(order.rawId, 'completed')}
                       className="flex-grow sm:flex-none h-11 w-full sm:w-12 bg-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-500/20 flex items-center justify-center hover:scale-105 sm:hover:scale-110 transition-transform disabled:opacity-30 disabled:hover:scale-100"
-                      title="Complete Order"
+                      title="Complete Order (Manual)"
                     >
                       <Check size={18} className="sm:w-5 sm:h-5" />
                     </button>
