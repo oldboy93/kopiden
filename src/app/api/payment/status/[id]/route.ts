@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import midtransClient from 'midtrans-client';
 
 const apiClient = new midtransClient.Snap({
-  isProduction: false,
+  isProduction: process.env.MIDTRANS_IS_PRODUCTION === 'true',
   serverKey: process.env.MIDTRANS_SERVER_KEY as string,
   clientKey: process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY as string
 });
