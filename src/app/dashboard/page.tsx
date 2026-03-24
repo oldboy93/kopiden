@@ -63,7 +63,24 @@ export default function Dashboard() {
       setLoading(false);
     }
     getDashboardData();
-  }, [router]);
+
+    // Realtime Listener for Customer Dashboard
+    const channel = supabase
+      .channel('customer_dashboard_realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'orders',
+        filter: `user_id=eq.${user?.id}`
+      }, () => {
+        getDashboardData(); // Refresh all data when orders change
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [router, user?.id]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

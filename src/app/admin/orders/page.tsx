@@ -130,8 +130,11 @@ export default function AdminOrders() {
           setTimeout(() => setToastMsg(null), 5000);
         }
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
-        fetchSingleOrder(payload.new.id);
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, async (payload) => {
+        const newOrderData = await fetchSingleOrder(payload.new.id);
+        if (newOrderData) {
+          setOrders(prev => [newOrderData, ...prev]);
+        }
         setToastMsg({ title: 'Pesanan Baru! ☕', desc: 'Ada pesanan baru yang masuk ke sistem.' });
         setTimeout(() => setToastMsg(null), 5000);
       })

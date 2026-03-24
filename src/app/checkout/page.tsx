@@ -193,16 +193,12 @@ export default function Checkout() {
       window.snap.pay(token, {
         onSuccess: async (result: any) => {
           console.log('Payment success:', result);
-          
-          // Update order status directly as fallback for local dev without Ngrok webhook
           await supabase
             .from('orders')
             .update({ payment_status: 'paid', order_status: 'processing' })
             .eq('id', order.id);
-
           setOrderId(order.id);
           setStep(3);
-          clearCart();
         },
         onPending: async (result: any) => {
           console.log('Payment pending:', result);
@@ -214,7 +210,6 @@ export default function Checkout() {
 
           setOrderId(order.id);
           setStep(3);
-          clearCart();
         },
         onError: (result: any) => {
           console.error('Payment error:', result);
@@ -224,6 +219,10 @@ export default function Checkout() {
           console.log('Customer closed the popup without finishing the payment');
         }
       });
+      
+      // CRITICAL: Clear cart immediately for mobile compatibility 
+      // (Redirects to payment apps often break browser callbacks)
+      clearCart();
     } catch (error: any) {
       console.error('Checkout error:', error);
       alert('Error processing order: ' + error.message);
