@@ -19,7 +19,8 @@ import {
   Package,
   Ticket,
   Star,
-  X
+  X,
+  Sparkles
 } from 'lucide-react';
 
 declare global {
@@ -455,20 +456,33 @@ export default function Checkout() {
 
                 <div className="mt-8 pt-8 border-t border-gray-50">
                   <label className="text-xs font-black uppercase tracking-widest text-gray-400 mb-2 block">Voucher Code</label>
-                  <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-                    <input 
-                      type="text" 
-                      value={voucherCode}
-                      onChange={(e) => setVoucherCode(e.target.value)}
-                      placeholder="e.g. KOPIDENFREE"
-                      className="flex-grow px-5 py-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-primary/20 outline-none font-bold uppercase text-sm h-[52px]"
-                    />
+                  <div className="space-y-4">
+                    <div className="relative group">
+                      <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors">
+                        <Ticket size={20} />
+                      </div>
+                      <input 
+                        type="text" 
+                        value={voucherCode}
+                        onChange={(e) => setVoucherCode(e.target.value)}
+                        placeholder="MASUKKAN KODE VOUCHER"
+                        className="w-full pl-14 pr-5 h-16 bg-gray-50/50 rounded-2xl border-2 border-transparent focus:border-primary/20 focus:bg-white outline-none font-black uppercase text-sm transition-all placeholder:text-gray-300 tracking-widest shadow-sm"
+                      />
+                    </div>
+                    
                     <button 
                       onClick={handleApplyVoucher}
                       disabled={checkingVoucher || !voucherCode}
-                      className="px-8 py-4 bg-[#1a1a1a] text-white rounded-2xl font-black text-sm hover:bg-black transition-all disabled:opacity-50 shadow-lg shadow-black/5 h-[52px] flex items-center justify-center min-w-[120px]"
+                      className="w-full h-14 bg-[#1a1a1a] text-white rounded-2xl font-black text-sm hover:bg-black hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-20 disabled:hover:scale-100 shadow-xl shadow-black/10 flex items-center justify-center gap-2 group"
                     >
-                      {checkingVoucher ? <Loader2 className="animate-spin" size={18} /> : 'Apply'}
+                      {checkingVoucher ? (
+                        <Loader2 className="animate-spin" size={20} />
+                      ) : (
+                        <>
+                          <Sparkles size={18} className="text-amber-400 group-hover:rotate-12 transition-transform" />
+                          Apply Voucher
+                        </>
+                      )}
                     </button>
                   </div>
                   {voucherError && <p className="text-red-500 text-[10px] font-bold mt-2 uppercase tracking-wider">{voucherError}</p>}
