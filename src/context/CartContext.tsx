@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 
 export interface CartItem {
   id: string;
@@ -27,21 +28,55 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
 
-  // Load cart from localStorage on mount
+  // Load cart from localStorage and Sync from Supabase on mount
   useEffect(() => {
-    const savedCart = localStorage.getItem('kopiden_cart');
-    if (savedCart) {
-      try {
-        setCart(JSON.parse(savedCart));
-      } catch (e) {
-        console.error('Failed to parse cart', e);
+    async function loadCart() {
+      // 1. Load from localStorage first (for speed)
+      const savedCart = localStorage.getItem('kopiden_cart');
+      if (savedCart) {
+        try {
+          setCart(JSON.parse(savedCart));
+        } catch (e) {
+          console.error('Failed to parse local cart', e);
+        }
+      }
+
+      // 2. Sync from Supabase if logged in
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('cart_draft')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile?.cart_draft && Array.isArray(profile.cart_draft) && profile.cart_draft.length > 0) {
+          setCart(profile.cart_draft);
+          localStorage.setItem('kopiden_cart', JSON.stringify(profile.cart_draft));
+        }
       }
     }
+    
+    loadCart();
   }, []);
 
-  // Save cart to localStorage on change
+  // Save cart to localStorage AND Supabase on change
   useEffect(() => {
     localStorage.setItem('kopiden_cart', JSON.stringify(cart));
+    
+    const syncToDB = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from('profiles')
+          .update({ cart_draft: cart })
+          .eq('id', user.id);
+      }
+    };
+
+    // Debounce sync slightly to avoid hitting API limit on rapid quantity changes
+    const timer = setTimeout(syncToDB, 1000);
+    return () => clearTimeout(timer);
   }, [cart]);
 
   const addToCart = (product: any) => {

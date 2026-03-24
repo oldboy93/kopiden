@@ -172,8 +172,8 @@ export default function Checkout() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           order_id: order.id,
-          gross_amount: total,
-          discount_amount: discountAmount,
+          gross_amount: total, // This 'total' already includes pointsDiscount from line 51 logic
+          discount_amount: discountAmount + pointsDiscount, // Log total discount for record
           voucher_code: appliedVoucher?.code,
           customer_details: {
             first_name: fullName,
@@ -455,18 +455,18 @@ export default function Checkout() {
 
                 <div className="mt-8 pt-8 border-t border-gray-50">
                   <label className="text-xs font-black uppercase tracking-widest text-gray-400 mb-2 block">Voucher Code</label>
-                  <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
                     <input 
                       type="text" 
                       value={voucherCode}
                       onChange={(e) => setVoucherCode(e.target.value)}
                       placeholder="e.g. KOPIDENFREE"
-                      className="flex-grow px-5 py-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-primary/20 outline-none font-bold uppercase text-sm"
+                      className="flex-grow px-5 py-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-primary/20 outline-none font-bold uppercase text-sm h-[52px]"
                     />
                     <button 
                       onClick={handleApplyVoucher}
                       disabled={checkingVoucher || !voucherCode}
-                      className="px-8 py-4 bg-[#1a1a1a] text-white rounded-2xl font-black text-sm hover:bg-black transition-all disabled:opacity-50 shadow-lg shadow-black/5"
+                      className="px-8 py-4 bg-[#1a1a1a] text-white rounded-2xl font-black text-sm hover:bg-black transition-all disabled:opacity-50 shadow-lg shadow-black/5 h-[52px] flex items-center justify-center min-w-[120px]"
                     >
                       {checkingVoucher ? <Loader2 className="animate-spin" size={18} /> : 'Apply'}
                     </button>
