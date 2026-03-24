@@ -134,9 +134,8 @@ export default function OrderTracking({ params }: { params: Promise<{ id: string
     const statusOrder = ['pending', 'brewing', 'on_the_way', 'completed'];
     let currentIndex = statusOrder.indexOf(status);
 
-    // If order is paid but admin hasn't clicked brewing yet, visually advance 
-    // to show that we have received the order + payment.
-    if (status === 'pending' && order.payment_status === 'paid') {
+    // Normalize 'processing' or 'paid' status to advance the stepper
+    if (status === 'processing' || (status === 'pending' && order.payment_status === 'paid')) {
       currentIndex = 1;
     }
 
