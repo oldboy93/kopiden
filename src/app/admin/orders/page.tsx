@@ -72,6 +72,37 @@ export default function AdminOrders() {
       }
       setLoading(false);
     }
+
+    async function fetchSingleOrder(id: string) {
+      const { data: order } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          profiles:user_id (full_name),
+          order_items (
+            quantity,
+            menu:menu_id (name)
+          )
+        `)
+        .eq('id', id)
+        .single();
+
+      if (order) {
+        const formatted = {
+          id: order.id.slice(0, 8).toUpperCase(),
+          rawId: order.id,
+          customer: order.profiles?.full_name || 'Anonymous',
+          items: order.order_items?.map((item: any) => `${item.quantity}x ${item.menu?.name}`).join(', ') || 'No items',
+          total: `Rp ${order.total_price.toLocaleString('id-ID')}`,
+          status: order.order_status,
+          paymentStatus: order.payment_status,
+          date: new Date(order.created_at).toLocaleDateString('id-ID'),
+          time: new Date(order.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+        };
+        setOrders(prev => [formatted, ...prev]);
+      }
+    }
+
     checkAuthAndFetch();
 
     // Setup Realtime Listener
@@ -99,7 +130,8 @@ export default function AdminOrders() {
         }
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
-        setToastMsg({ title: 'Pesanan Baru! ☕', desc: 'Ada pesanan baru yang dibuat. Segarkan bila tidak muncul.' });
+        fetchSingleOrder(payload.new.id);
+        setToastMsg({ title: 'Pesanan Baru! ☕', desc: 'Ada pesanan baru yang masuk ke sistem.' });
         setTimeout(() => setToastMsg(null), 5000);
       })
       .subscribe();
