@@ -99,8 +99,9 @@ export default function AdminOrders() {
           date: new Date(order.created_at).toLocaleDateString('id-ID'),
           time: new Date(order.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
         };
-        setOrders(prev => [formatted, ...prev]);
+        return formatted;
       }
+      return null;
     }
 
     checkAuthAndFetch();

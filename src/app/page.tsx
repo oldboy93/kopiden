@@ -4,11 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
-import { useCart } from '@/context/CartContext';
 import AppHeader from '@/components/AppHeader';
 
 export default function Home() {
-  const { addToCart, totalItems } = useCart();
   const [favorites, setFavorites] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
 
@@ -95,12 +93,6 @@ export default function Home() {
                 <p className="text-gray-400 text-sm mb-4 line-clamp-1">{item.description}</p>
                 <div className="flex justify-between items-center">
                   <span className="text-xl font-black text-primary">Rp {item.price.toLocaleString('id-ID')}</span>
-                  <button 
-                    onClick={() => addToCart(item)}
-                    className="h-10 w-10 bg-primary text-white rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg shadow-primary/20 active:scale-90"
-                  >
-                    +
-                  </button>
                 </div>
               </div>
             )) : (

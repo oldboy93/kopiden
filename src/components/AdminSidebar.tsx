@@ -1,5 +1,4 @@
-'use client';
-
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, Coffee, ShoppingBag, LogOut, Banknote } from 'lucide-react';
@@ -8,6 +7,46 @@ import { supabase } from '@/lib/supabase';
 export default function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const [hasNewOrders, setHasNewOrders] = useState(false);
+
+  useEffect(() => {
+    // Check initial pending orders
+    const checkPending = async () => {
+      const { count } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('order_status', 'pending');
+      
+      if (count && count > 0) setHasNewOrders(true);
+    };
+    checkPending();
+
+    // Listen for new orders
+    const channel = supabase
+      .channel('sidebar-orders')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'orders' },
+        () => {
+          setHasNewOrders(true);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'orders' },
+        (payload: any) => {
+          if (payload.new.order_status !== 'pending') {
+            // Re-check if any pending still exists
+            checkPending();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -17,7 +56,7 @@ export default function AdminSidebar() {
   const menuItems = [
     { href: '/admin/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
     { href: '/admin/menu', label: 'Menu Management', icon: <Coffee size={20} /> },
-    { href: '/admin/orders', label: 'Orders', icon: <ShoppingBag size={20} /> },
+    { href: '/admin/orders', label: 'Orders', icon: <ShoppingBag size={20} />, badge: hasNewOrders },
     { href: '/admin/vouchers', label: 'Vouchers', icon: <Banknote size={20} /> },
   ];
 
@@ -31,12 +70,22 @@ export default function AdminSidebar() {
             <Link 
               key={item.href}
               href={item.href} 
-              className={`flex items-center gap-2 md:gap-4 px-3 py-2 md:px-4 md:py-3.5 rounded-xl md:rounded-2xl font-bold flex-shrink-0 transition-all ${
+              onClick={() => {
+                if (item.href === '/admin/orders') setHasNewOrders(false);
+              }}
+              className={`flex items-center gap-2 md:gap-4 px-3 py-2 md:px-4 md:py-3.5 rounded-xl md:rounded-2xl font-bold flex-shrink-0 transition-all relative ${
                 isActive ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
             >
               <span className="flex-shrink-0">{item.icon}</span>
               <span className="text-sm md:text-base hidden sm:inline">{item.label}</span>
+              
+              {item.badge && (
+                <span className="absolute top-1 right-1 flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                </span>
+              )}
             </Link>
           );
         })}

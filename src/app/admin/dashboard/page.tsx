@@ -14,7 +14,10 @@ export default function AdminDashboard() {
     totalRevenue: 0,
     totalOrders: 0,
     activeCustomers: 0,
-    pendingOrders: 0
+    pendingOrders: 0,
+    topItems: [] as any[],
+    categoryData: [] as any[],
+    revenueTrend: [] as any[]
   });
   const router = useRouter();
 
@@ -65,48 +68,93 @@ export default function AdminDashboard() {
 
   async function fetchStats() {
     try {
-      // Get All Orders Count
-      const { count: totalOrdersCount, error: countError } = await supabase
+      // 1. Basic Counts
+      const { count: totalOrdersCount } = await supabase
         .from('orders')
         .select('*', { count: 'exact', head: true });
 
-      if (countError) console.error('Count Error:', countError);
-
-      // Get Total Revenue (where payment_status is 'paid')
-      const { data: revenueData, error: revError } = await supabase
-        .from('orders')
-        .select('total_price')
-        .eq('payment_status', 'paid');
-      
-      if (revError) console.error('Revenue Error:', revError);
-
-      const totalRevenueSum = revenueData?.reduce((acc, curr) => acc + Number(curr.total_price), 0) || 0;
-
-      // Get Active Customers (Unique user_id in orders)
-      const { data: customerData, error: custError } = await supabase
-        .from('orders')
-        .select('user_id');
-      
-      if (custError) console.error('Customer Error:', custError);
-
-      const uniqueCustomers = new Set(customerData?.map(o => o.user_id)).size;
-
-      // Get Pending Orders Count
-      const { count: pendingCount, error: pendingError } = await supabase
+      const { count: pendingCount } = await supabase
         .from('orders')
         .select('*', { count: 'exact', head: true })
         .eq('order_status', 'pending');
 
-      if (pendingError) console.error('Pending Error:', pendingError);
+      // 2. Revenue & Detailed Data (Paid Orders Only)
+      const { data: paidOrders } = await supabase
+        .from('orders')
+        .select('total_price, created_at, user_id')
+        .eq('payment_status', 'paid');
+      
+      const totalRevenueSum = paidOrders?.reduce((acc, curr) => acc + Number(curr.total_price), 0) || 0;
+      const uniqueCustomers = new Set(paidOrders?.map(o => o.user_id)).size;
+
+      // 3. Top Menu Items & Category Distribution (Fetch all order_items with menu join)
+      const { data: itemsData } = await supabase
+        .from('order_items')
+        .select(`
+          quantity,
+          price,
+          menu:menu_id (name, category)
+        `);
+
+      // Process Top Items
+      const itemMap: Record<string, { count: number, revenue: number }> = {};
+      const categoryMap: Record<string, number> = {};
+
+      itemsData?.forEach((item: any) => {
+        const name = item.menu?.name || 'Unknown';
+        const category = item.menu?.category || 'Other';
+        const qty = item.quantity || 0;
+        const rev = (item.price || 0) * qty;
+
+        itemMap[name] = {
+          count: (itemMap[name]?.count || 0) + qty,
+          revenue: (itemMap[name]?.revenue || 0) + rev
+        };
+
+        categoryMap[category] = (categoryMap[category] || 0) + rev;
+      });
+
+      const topItems = Object.entries(itemMap)
+        .map(([name, data]) => ({ name, ...data }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+      const categoryData = Object.entries(categoryMap)
+        .map(([name, value]) => ({ name, value }));
+
+      // 4. Revenue Trend (Last 7 Days)
+      const last7Days = [...Array(7)].map((_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        return d.toISOString().split('T')[0];
+      }).reverse();
+
+      const trendMap: Record<string, number> = {};
+      last7Days.forEach(date => trendMap[date] = 0);
+
+      paidOrders?.forEach(order => {
+        const date = order.created_at.split('T')[0];
+        if (trendMap[date] !== undefined) {
+          trendMap[date] += Number(order.total_price);
+        }
+      });
+
+      const revenueTrend = last7Days.map(date => ({
+        date: new Date(date).toLocaleDateString('id-ID', { weekday: 'short' }),
+        value: trendMap[date]
+      }));
 
       setStatsData({
         totalRevenue: totalRevenueSum,
         totalOrders: totalOrdersCount || 0,
         activeCustomers: uniqueCustomers || 0,
-        pendingOrders: pendingCount || 0
+        pendingOrders: pendingCount || 0,
+        topItems,
+        categoryData,
+        revenueTrend
       });
     } catch (error) {
-      console.error('Catch Error fetching admin stats:', error);
+      console.error('Error fetching analytics:', error);
     }
   }
 
@@ -174,6 +222,92 @@ export default function AdminDashboard() {
               <h3 className="text-sm sm:text-xl md:text-2xl font-black truncate w-full">{stat.value}</h3>
             </div>
           ))}
+        </div>
+
+        {/* Analytics Insights */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8 md:mb-12">
+          {/* Revenue Trend Chart */}
+          <div className="lg:col-span-2 bg-white p-8 rounded-[3rem] shadow-sm border border-gray-50">
+            <h3 className="text-xl font-bold mb-8">Weekly Revenue Trend</h3>
+            <div className="h-64 flex items-end justify-between gap-4 px-4 relative">
+              {/* Grid Lines */}
+              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pr-4 pb-8">
+                {[1, 2, 3, 4].map(i => <div key={i} className="border-t border-gray-50 w-full h-0"></div>)}
+              </div>
+              
+              {statsData.revenueTrend.map((day, i) => {
+                const maxVal = Math.max(...statsData.revenueTrend.map(d => d.value), 1);
+                const height = (day.value / maxVal) * 100;
+                return (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-4 relative group">
+                    <div 
+                      className="w-full bg-emerald-500/10 hover:bg-emerald-500 transition-all rounded-t-xl relative overflow-hidden flex flex-col justify-end min-h-[4px]"
+                      style={{ height: `${height}%` }}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-t from-emerald-600/20 to-transparent"></div>
+                    </div>
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-tighter">{day.date}</span>
+                    
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full mb-2 bg-[#1a1a1a] text-white px-3 py-1.5 rounded-lg text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                      Rp {day.value.toLocaleString('id-ID')}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Top Items & Categories */}
+          <div className="space-y-8">
+            <div className="bg-white p-8 rounded-[3rem] shadow-sm border border-gray-50">
+              <h3 className="text-xl font-bold mb-6">Top Sellers</h3>
+              <div className="space-y-6">
+                {statsData.topItems.map((item, i) => {
+                  const maxCount = Math.max(...statsData.topItems.map(it => it.count), 1);
+                  const width = (item.count / maxCount) * 100;
+                  return (
+                    <div key={i} className="space-y-2">
+                      <div className="flex justify-between text-sm font-bold">
+                        <span>{item.name}</span>
+                        <span className="text-emerald-500">{item.count} sold</span>
+                      </div>
+                      <div className="h-2 w-full bg-gray-50 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-emerald-500 rounded-full"
+                          style={{ width: `${width}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="bg-[#1a1a1a] p-8 rounded-[3rem] shadow-xl shadow-emerald-950/20 text-white">
+              <h3 className="text-xl font-bold mb-6">Category Split</h3>
+              <div className="space-y-6">
+                {statsData.categoryData.map((cat, i) => {
+                  const total = statsData.categoryData.reduce((acc, c) => acc + c.value, 0);
+                  const percent = (cat.value / total) * 100;
+                  return (
+                    <div key={i} className="space-y-2">
+                       <div className="flex justify-between text-xs font-bold uppercase tracking-widest text-gray-400">
+                        <span>{cat.name}</span>
+                        <span>{Math.round(percent)}%</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-emerald-500 rounded-full"
+                          style={{ width: `${percent}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Recent Orders Table */}
