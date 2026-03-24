@@ -438,23 +438,23 @@ export default function Dashboard() {
 
       {/* Loyalty Modal */}
       {showLoyaltyModal && (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/40 backdrop-blur-md animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center p-0 md:p-4 bg-black/40 backdrop-blur-md animate-in fade-in duration-300">
           <div 
-            className="bg-white w-full max-w-lg rounded-t-[3rem] md:rounded-[3rem] overflow-hidden shadow-2xl animate-in slide-in-from-bottom-20 duration-500"
+            className="bg-white w-full max-w-lg rounded-t-[3rem] md:rounded-[3rem] overflow-hidden shadow-2xl animate-in slide-in-from-bottom-20 duration-500 max-h-[90vh] flex flex-col"
           >
-            <div className="relative bg-[#1a1a1a] p-10 text-center overflow-hidden">
-               <Sparkles className="absolute -right-4 -top-4 w-32 h-32 text-amber-400/10" />
+            <div className="relative bg-[#1a1a1a] p-8 md:p-10 text-center overflow-hidden shrink-0">
+               <Sparkles className="absolute -right-4 -top-4 w-24 h-24 text-amber-400/10" />
                <div className="relative z-10">
-                 <div className="inline-flex items-center justify-center h-20 w-20 bg-amber-400/20 rounded-3xl mb-4 border border-amber-400/30">
-                    <Star size={40} className="text-amber-400 fill-amber-400" />
+                 <div className="inline-flex items-center justify-center h-16 w-16 bg-amber-400/20 rounded-2xl mb-3 border border-amber-400/30">
+                    <Star size={32} className="text-amber-400 fill-amber-400" />
                  </div>
-                 <h3 className="text-2xl font-black text-white tracking-tight italic">Kopiden Gold Club</h3>
-                 <p className="text-amber-400/60 text-xs font-bold uppercase tracking-[0.2em] mt-2">Exclusive Rewards Member</p>
+                 <h3 className="text-xl md:text-2xl font-black text-white tracking-tight italic">Kopiden Gold Club</h3>
+                 <p className="text-amber-400/60 text-[10px] font-bold uppercase tracking-[0.2em] mt-1">Exclusive Rewards Member</p>
                </div>
             </div>
 
-            <div className="p-8 space-y-8">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="p-6 md:p-8 space-y-6 overflow-y-auto custom-scrollbar pb-32 md:pb-8">
+              <div className="grid grid-cols-2 gap-3 md:gap-4">
                 <div className="bg-gray-50 p-6 rounded-3xl text-center border border-gray-100">
                   <div className="text-2xl font-black text-[#1a1a1a]">{(profile?.loyalty_points || 0).toLocaleString()}</div>
                   <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Total Poin</div>

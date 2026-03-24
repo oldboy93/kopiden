@@ -496,8 +496,8 @@ export default function Checkout() {
                           <Star size={24} className={usePoints ? 'fill-white' : ''} />
                         </div>
                         <div>
-                          <div className="font-black text-sm text-[#1a1a1a]">Redeem {availablePoints.toLocaleString()} Points</div>
-                          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Worth Rp {Math.floor(availablePoints / 100).toLocaleString()} discount</div>
+                          <div className="font-black text-sm text-[#1a1a1a]">Gunakan Semua Poin ({availablePoints.toLocaleString()})</div>
+                          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Potongan Rp {Math.floor(availablePoints / 100).toLocaleString()}</div>
                         </div>
                       </div>
                       <div className={`h-6 w-12 rounded-full relative transition-colors ${usePoints ? 'bg-primary' : 'bg-gray-200'}`}>
