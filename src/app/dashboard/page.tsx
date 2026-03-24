@@ -103,7 +103,13 @@ export default function Dashboard() {
         .eq('id', order.id);
 
       window.snap.pay(token, {
-        onSuccess: () => {
+        onSuccess: async () => {
+          // Localhost fallback: Update directly in Supabase since Midtrans webhook can't reach localhost
+          await supabase
+            .from('orders')
+            .update({ payment_status: 'paid', order_status: 'processing' })
+            .eq('id', order.id);
+
           setOrders(prev => prev.map(o => o.id === order.id ? { ...o, payment_status: 'paid', order_status: 'processing' } : o));
           router.refresh();
         },

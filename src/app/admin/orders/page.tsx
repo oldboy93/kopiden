@@ -12,6 +12,7 @@ export default function AdminOrders() {
   const [loading, setLoading] = useState(true);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [syncMessage, setSyncMessage] = useState<{type: 'error' | 'success' | 'info', text: string} | null>(null);
+  const [toastMsg, setToastMsg] = useState<{title: string, desc: string} | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -72,6 +73,40 @@ export default function AdminOrders() {
       setLoading(false);
     }
     checkAuthAndFetch();
+
+    // Setup Realtime Listener
+    const channel = supabase
+      .channel('orders_realtime')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (payload) => {
+        const newOrder = payload.new;
+        const oldOrder = payload.old;
+        
+        setOrders(prev => prev.map(o => {
+          if (o.rawId === newOrder.id) {
+            return {
+              ...o,
+              status: newOrder.order_status,
+              paymentStatus: newOrder.payment_status
+            };
+          }
+          return o;
+        }));
+
+        if (newOrder.payment_status === 'paid' && oldOrder.payment_status !== 'paid') {
+          const idShort = newOrder.id.slice(0, 8).toUpperCase();
+          setToastMsg({ title: 'Hore! Pembayaran Masuk 🎉', desc: `Pesanan #${idShort} telah lunas dibayar.` });
+          setTimeout(() => setToastMsg(null), 5000);
+        }
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
+        setToastMsg({ title: 'Pesanan Baru! ☕', desc: 'Ada pesanan baru yang dibuat. Segarkan bila tidak muncul.' });
+        setTimeout(() => setToastMsg(null), 5000);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [router]);
 
   const handleUpdateStatus = async (orderId: string, status: string) => {
@@ -276,6 +311,28 @@ export default function AdminOrders() {
           </div>
         </div>
       )}
+
+      {/* Floating Toast Notification */}
+      {toastMsg && (
+        <div className="fixed top-6 right-6 z-[200] max-w-sm animate-in slide-in-from-top-4 fade-in duration-500">
+          <div className="bg-white rounded-2xl shadow-2xl border border-emerald-100 p-4 pl-5 flex items-start gap-4 relative overflow-hidden">
+            <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-500"></div>
+            <div className="flex-grow">
+              <h4 className="font-black text-emerald-600 mb-1 flex items-center gap-2">
+                <Check size={16} /> {toastMsg.title}
+              </h4>
+              <p className="text-gray-500 text-sm font-medium">{toastMsg.desc}</p>
+            </div>
+            <button 
+              onClick={() => setToastMsg(null)}
+              className="p-1 hover:bg-gray-100 rounded-full flex-shrink-0 transition-colors"
+            >
+              <X size={16} className="text-gray-400" />
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
