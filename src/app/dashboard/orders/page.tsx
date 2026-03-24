@@ -18,14 +18,19 @@ import {
   XCircle,
   Package,
   ShoppingBag,
-  X
+  X,
+  Star,
+  RefreshCw,
+  ExternalLink
 } from "lucide-react";
 import Link from "next/link";
+import { useCart } from "@/context/CartContext";
 
 export default function OrderHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const { addToCart } = useCart();
   const router = useRouter();
 
   useEffect(() => {
@@ -61,6 +66,23 @@ export default function OrderHistoryPage() {
     }
     getOrders();
   }, [router]);
+
+  const handleReorder = (order: any) => {
+    if (!order.order_items) return;
+    
+    order.order_items.forEach((item: any) => {
+      addToCart({
+        id: item.menu?.id || item.menu_id,
+        name: item.menu?.name || "Coffee",
+        price: item.price,
+        quantity: item.quantity,
+        size: item.size,
+        category: "Coffee"
+      });
+    });
+    
+    router.push("/cart");
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -320,17 +342,35 @@ export default function OrderHistoryPage() {
                   <span className="text-sm font-black text-[#1a1a1a]">Total Akhir</span>
                   <span className="text-xl font-black text-primary italic">Rp {(selectedOrder.total_price || 0).toLocaleString()}</span>
                 </div>
+
+                {selectedOrder.points_earned > 0 && (
+                  <div className="mt-4 p-3 bg-amber-50 rounded-2xl flex items-center gap-2 border border-amber-100">
+                    <Star size={14} className="text-amber-500 fill-amber-500" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">
+                      Kamu dapat {selectedOrder.points_earned} Gold Pts dari pesanan ini
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Modal Footer */}
             <div className="p-6 bg-gray-50/50 flex gap-3">
-              <Link 
-                href={`/order/tracking/${selectedOrder.id}`}
-                className="flex-1 bg-primary text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all text-center"
-              >
-                Lacak Live
-              </Link>
+              {selectedOrder.order_status !== 'completed' && selectedOrder.order_status !== 'cancelled' ? (
+                <Link 
+                  href={`/order/tracking/${selectedOrder.id}`}
+                  className="flex-1 bg-primary text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all text-center flex items-center justify-center gap-2"
+                >
+                  Lacak Live <ExternalLink size={16} />
+                </Link>
+              ) : selectedOrder.order_status === 'completed' ? (
+                <button 
+                  onClick={() => handleReorder(selectedOrder)}
+                  className="flex-1 bg-[#1a1a1a] text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-black/10 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                >
+                  Pesan Lagi <RefreshCw size={16} />
+                </button>
+              ) : null}
               <button 
                 onClick={() => setSelectedOrder(null)}
                 className="px-6 py-4 bg-white border border-gray-100 text-gray-400 rounded-2xl font-black text-sm hover:text-red-500 transition-colors"

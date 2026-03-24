@@ -16,6 +16,7 @@ import {
   ArrowRight,
   Star,
   ShoppingBag,
+  Ticket,
   MapPin,
 } from "lucide-react";
 
@@ -24,6 +25,7 @@ export default function Dashboard() {
   const [profile, setProfile] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showLoyaltyModal, setShowLoyaltyModal] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -223,7 +225,10 @@ export default function Dashboard() {
               Total Spent
             </div>
           </div>
-          <Link href="/loyalty" className="bg-[#1a1a1a] rounded-2xl p-4 text-center shadow-lg border border-gray-800 relative overflow-hidden group hover:scale-[1.02] transition-transform">
+          <button 
+            onClick={() => setShowLoyaltyModal(true)}
+            className="bg-[#1a1a1a] rounded-2xl p-4 text-center shadow-lg border border-gray-800 relative overflow-hidden group hover:scale-[1.02] transition-transform w-full"
+          >
             <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent"></div>
             <Sparkles className="absolute -right-2 -top-2 w-10 h-10 text-amber-400/20 group-hover:rotate-12 transition-transform" />
             <div className="text-2xl font-black text-amber-400 relative z-10">
@@ -233,7 +238,7 @@ export default function Dashboard() {
               Gold Pts{" "}
               <Star size={10} className="fill-amber-400 text-amber-400" />
             </div>
-          </Link>
+          </button>
         </div>
 
         {/* Quick Actions */}
@@ -430,6 +435,73 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Loyalty Modal */}
+      {showLoyaltyModal && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/40 backdrop-blur-md animate-in fade-in duration-300">
+          <div 
+            className="bg-white w-full max-w-lg rounded-t-[3rem] md:rounded-[3rem] overflow-hidden shadow-2xl animate-in slide-in-from-bottom-20 duration-500"
+          >
+            <div className="relative bg-[#1a1a1a] p-10 text-center overflow-hidden">
+               <Sparkles className="absolute -right-4 -top-4 w-32 h-32 text-amber-400/10" />
+               <div className="relative z-10">
+                 <div className="inline-flex items-center justify-center h-20 w-20 bg-amber-400/20 rounded-3xl mb-4 border border-amber-400/30">
+                    <Star size={40} className="text-amber-400 fill-amber-400" />
+                 </div>
+                 <h3 className="text-2xl font-black text-white tracking-tight italic">Kopiden Gold Club</h3>
+                 <p className="text-amber-400/60 text-xs font-bold uppercase tracking-[0.2em] mt-2">Exclusive Rewards Member</p>
+               </div>
+            </div>
+
+            <div className="p-8 space-y-8">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-6 rounded-3xl text-center border border-gray-100">
+                  <div className="text-2xl font-black text-[#1a1a1a]">{(profile?.loyalty_points || 0).toLocaleString()}</div>
+                  <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Total Poin</div>
+                </div>
+                <div className="bg-amber-400 p-6 rounded-3xl text-center shadow-lg shadow-amber-400/20">
+                  <div className="text-2xl font-black text-white">Rp {(Math.floor((profile?.loyalty_points || 0) / 100)).toLocaleString()}</div>
+                  <div className="text-[10px] text-white/70 font-bold uppercase tracking-widest mt-1">Potongan Harga</div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="font-black text-sm uppercase tracking-widest text-[#1a1a1a] flex items-center gap-2">
+                  <div className="h-1 w-6 bg-primary rounded-full"></div>
+                  Cara Mendapatkan Poin
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex gap-4 p-4 hover:bg-gray-50 rounded-2xl transition-colors group">
+                    <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                       <ShoppingBag size={20} />
+                    </div>
+                    <div>
+                      <div className="font-black text-sm text-[#1a1a1a]">Belanja & Nikmati</div>
+                      <p className="text-xs text-gray-400 font-medium mt-1">Dapatkan 1 Poin untuk setiap Rp 1 yang Anda belanjakan.</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-4 p-4 hover:bg-gray-50 rounded-2xl transition-colors group">
+                    <div className="h-10 w-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0 text-amber-600 group-hover:bg-amber-400 group-hover:text-white transition-colors">
+                       <Ticket size={20} />
+                    </div>
+                    <div>
+                      <div className="font-black text-sm text-[#1a1a1a]">Tukar & Hemat</div>
+                      <p className="text-xs text-gray-400 font-medium mt-1">Gunakan 100 Poin untuk potongan Rp 1 saat checkout.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setShowLoyaltyModal(false)}
+                className="w-full bg-[#1a1a1a] text-white py-5 rounded-full font-black text-sm shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                Mengerti
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
