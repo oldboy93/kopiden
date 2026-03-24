@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import midtransClient from 'midtrans-client';
 
 const apiClient = new midtransClient.Snap({
@@ -13,12 +13,20 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const authHeader = request.headers.get('authorization');
+
+  // Create an authenticated client if a token is provided by the admin/user
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    authHeader ? { global: { headers: { Authorization: authHeader } } } : {}
+  );
 
   try {
     // 1. Get the order from Supabase
     const { data: order, error: orderError } = await supabase
       .from('orders')
-      .select('midtrans_order_id, id')
+      .select('midtrans_order_id, id, payment_status')
       .eq('id', id)
       .single();
 
@@ -64,6 +72,16 @@ export async function GET(
       paymentStatus = 'expired';
     } else if (transactionStatus === 'pending') {
       paymentStatus = 'pending';
+    }
+
+    // Protection: Prevent downgrading a 'paid' order if we queried an older/unpaid transaction
+    if (order.payment_status === 'paid' && paymentStatus !== 'paid') {
+      return NextResponse.json({ 
+        success: true, 
+        payment_status: 'paid',
+        message: 'Order is already marked as paid. Ignoring older transaction status.',
+        raw: statusResponse 
+      });
     }
 
     // 3. Update Supabase

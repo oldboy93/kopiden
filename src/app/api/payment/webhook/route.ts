@@ -71,10 +71,13 @@ export async function POST(request: Request) {
       paymentStatus = 'pending';
     }
 
-    // Update orders table
+    // Update orders table with both payment_status AND the correct midtrans_order_id
     const { error: orderUpdateError } = await supabase
       .from('orders')
-      .update({ payment_status: paymentStatus })
+      .update({ 
+        payment_status: paymentStatus,
+        midtrans_order_id: midtransOrderId
+      })
       .eq('id', orderId);
 
     if (orderUpdateError) {

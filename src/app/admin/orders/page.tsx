@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Check, X, Eye, Loader2, Banknote, MapPin, RefreshCw, Truck, Coffee } from 'lucide-react';
+import { Check, X, Eye, Loader2, Banknote, MapPin, RefreshCw, Truck, Coffee, AlertCircle, Info } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import AdminSidebar from '@/components/AdminSidebar';
 
@@ -11,6 +11,7 @@ export default function AdminOrders() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [syncMessage, setSyncMessage] = useState<{type: 'error' | 'success' | 'info', text: string} | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -100,16 +101,25 @@ export default function AdminOrders() {
   const handleSyncStatus = async (orderId: string) => {
     setSyncingId(orderId);
     try {
-      const response = await fetch(`/api/payment/status/${orderId}`);
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`/api/payment/status/${orderId}`, {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`
+        }
+      });
       const data = await response.json();
       
       if (data.success) {
         setOrders(prev => prev.map(o => o.rawId === orderId ? { ...o, paymentStatus: data.payment_status } : o));
+        if (data.message) {
+           setSyncMessage({ type: 'info', text: data.message });
+        }
       } else {
-        alert('Sync Error: ' + (data.error || 'Check Midtrans Sandbox Dashboard'));
+        setSyncMessage({ type: 'error', text: data.error || 'Check Midtrans Sandbox Dashboard' });
       }
     } catch (err) {
       console.error(err);
+      setSyncMessage({ type: 'error', text: 'Terjadi kesalahan jaringan saat sync.' });
     } finally {
       setSyncingId(null);
     }
@@ -228,6 +238,44 @@ export default function AdminOrders() {
            ))}
         </div>
       </main>
+
+      {/* Sync Message Modal */}
+      {syncMessage && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setSyncMessage(null)}></div>
+          <div className="bg-white rounded-[2.5rem] w-full max-w-md p-8 relative z-10 shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-500">
+            <button 
+              onClick={() => setSyncMessage(null)}
+              className="absolute top-6 right-6 p-2 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <X size={20} className="text-gray-400" />
+            </button>
+            <div className={`h-16 w-16 rounded-[1.5rem] flex items-center justify-center mb-6 ${
+              syncMessage.type === 'error' ? 'bg-red-50 text-red-500' : 
+              syncMessage.type === 'success' ? 'bg-emerald-50 text-emerald-500' : 
+              'bg-blue-50 text-blue-500'
+            }`}>
+              {syncMessage.type === 'error' ? <AlertCircle size={32} /> : 
+               syncMessage.type === 'success' ? <Check size={32} /> : 
+               <Info size={32} />}
+            </div>
+            <h3 className="text-2xl font-black mb-2">
+              {syncMessage.type === 'error' ? 'Sync Gagal' : 
+               syncMessage.type === 'success' ? 'Sync Berhasil' : 
+               'Informasi Sync'}
+            </h3>
+            <p className="text-gray-500 mb-8 leading-relaxed">
+              {syncMessage.text}
+            </p>
+            <button 
+              onClick={() => setSyncMessage(null)}
+              className="w-full py-4 bg-gray-100 text-gray-600 rounded-full font-bold hover:bg-gray-200 transition-all active:scale-95"
+            >
+              Tutup
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

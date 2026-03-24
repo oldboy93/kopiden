@@ -25,12 +25,15 @@ export async function POST(request: Request) {
   // 1. Check for existing token to reuse
   const { data: existingOrder } = await supabase
     .from('orders')
-    .select('midtrans_token')
+    .select('midtrans_token, midtrans_order_id')
     .eq('id', order_id)
     .single();
 
   if (existingOrder?.midtrans_token) {
-    return NextResponse.json({ token: existingOrder.midtrans_token });
+    return NextResponse.json({ 
+      token: existingOrder.midtrans_token,
+      order_id: existingOrder.midtrans_order_id || order_id
+    });
   }
 
   const parameter = {
