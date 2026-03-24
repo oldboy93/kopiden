@@ -18,6 +18,7 @@ import {
   User,
   Package,
   Ticket,
+  Star,
   X
 } from 'lucide-react';
 
@@ -44,10 +45,15 @@ export default function Checkout() {
   const [appliedVoucher, setAppliedVoucher] = useState<any>(null);
   const [voucherError, setVoucherError] = useState('');
   const [checkingVoucher, setCheckingVoucher] = useState(false);
+  
+  // Points State
+  const [availablePoints, setAvailablePoints] = useState(0);
+  const [usePoints, setUsePoints] = useState(false);
 
   const tax = subtotal * 0.1;
   const discountAmount = appliedVoucher ? (subtotal * appliedVoucher.discount_percent / 100) : 0;
-  const total = subtotal + tax - discountAmount;
+  const pointsDiscount = usePoints ? Math.floor(availablePoints / 100) : 0;
+  const total = Math.max(0, subtotal + tax - discountAmount - pointsDiscount);
 
   const router = useRouter();
 
@@ -71,6 +77,7 @@ export default function Checkout() {
         setFullName(profile.full_name || '');
         setEmail(profile.email || '');
         setAddress(profile.address || '');
+        setAvailablePoints(profile.loyalty_points || 0);
       }
     }
     
@@ -116,6 +123,7 @@ export default function Checkout() {
 
   const handlePayment = async () => {
     setLoading(true);
+    const pointsUsedValue = usePoints ? availablePoints : 0;
     try {
       // 1. Create Order in Supabase
       const { data: order, error: orderError } = await supabase
@@ -124,7 +132,8 @@ export default function Checkout() {
           user_id: user.id,
           total_price: total,
           payment_status: 'pending',
-          order_status: 'pending'
+          order_status: 'pending',
+          points_used: usePoints ? availablePoints : 0
         })
         .select()
         .single();
@@ -198,6 +207,14 @@ export default function Checkout() {
             .from('orders')
             .update({ payment_status: 'paid', order_status: 'processing' })
             .eq('id', order.id);
+
+          // Deduct points from profile if used
+          if (usePoints) {
+            await supabase
+              .from('profiles')
+              .update({ loyalty_points: availablePoints - pointsUsedValue }) // Wait, pointsUsedValue needs to be defined
+              .eq('id', user.id);
+          }
           setOrderId(order.id);
           setStep(3);
         },
@@ -424,6 +441,12 @@ export default function Checkout() {
                     <span>Service Tax (10%)</span>
                     <span className="text-[#1a1a1a]">Rp {tax.toLocaleString('id-ID')}</span>
                   </div>
+                  {usePoints && (
+                    <div className="flex justify-between text-emerald-600">
+                      <span>Points Redemption</span>
+                      <span className="font-black">- Rp {pointsDiscount.toLocaleString('id-ID')}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between pt-4 border-t border-gray-100 text-2xl font-black text-[#1a1a1a]">
                     <span>Total Pay</span>
                     <span className="text-primary italic">Rp {total.toLocaleString('id-ID')}</span>
@@ -432,18 +455,18 @@ export default function Checkout() {
 
                 <div className="mt-8 pt-8 border-t border-gray-50">
                   <label className="text-xs font-black uppercase tracking-widest text-gray-400 mb-2 block">Voucher Code</label>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-3">
                     <input 
                       type="text" 
                       value={voucherCode}
                       onChange={(e) => setVoucherCode(e.target.value)}
                       placeholder="e.g. KOPIDENFREE"
-                      className="flex-grow px-4 py-3 bg-gray-50 rounded-xl border-none focus:ring-2 focus:ring-primary/20 outline-none font-bold uppercase text-sm"
+                      className="flex-grow px-5 py-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-primary/20 outline-none font-bold uppercase text-sm"
                     />
                     <button 
                       onClick={handleApplyVoucher}
                       disabled={checkingVoucher || !voucherCode}
-                      className="px-6 py-3 bg-[#1a1a1a] text-white rounded-xl font-bold text-sm hover:bg-black transition-all disabled:opacity-50"
+                      className="px-8 py-4 bg-[#1a1a1a] text-white rounded-2xl font-black text-sm hover:bg-black transition-all disabled:opacity-50 shadow-lg shadow-black/5"
                     >
                       {checkingVoucher ? <Loader2 className="animate-spin" size={18} /> : 'Apply'}
                     </button>
@@ -461,6 +484,28 @@ export default function Checkout() {
                     </div>
                   )}
                 </div>
+
+                {availablePoints > 0 && (
+                  <div className="mt-6 pt-6 border-t border-gray-50">
+                    <div 
+                      onClick={() => setUsePoints(!usePoints)}
+                      className={`p-5 rounded-[2rem] border-2 transition-all cursor-pointer flex items-center justify-between ${usePoints ? 'border-primary bg-primary/5 shadow-inner' : 'border-gray-50 hover:border-gray-100'}`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`h-12 w-12 rounded-2xl flex items-center justify-center transition-colors ${usePoints ? 'bg-primary text-white' : 'bg-gray-50 text-gray-400'}`}>
+                          <Star size={24} className={usePoints ? 'fill-white' : ''} />
+                        </div>
+                        <div>
+                          <div className="font-black text-sm text-[#1a1a1a]">Redeem {availablePoints.toLocaleString()} Points</div>
+                          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Worth Rp {Math.floor(availablePoints / 100).toLocaleString()} discount</div>
+                        </div>
+                      </div>
+                      <div className={`h-6 w-12 rounded-full relative transition-colors ${usePoints ? 'bg-primary' : 'bg-gray-200'}`}>
+                        <div className={`absolute top-1 h-4 w-4 bg-white rounded-full transition-all ${usePoints ? 'right-1' : 'left-1'}`}></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="mt-10 p-4 bg-emerald-50/50 rounded-2xl flex items-start gap-3">
                   <ShieldCheck className="text-emerald-500 flex-shrink-0" size={18} />

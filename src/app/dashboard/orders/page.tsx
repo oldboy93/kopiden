@@ -17,13 +17,15 @@ import {
   AlertCircle,
   XCircle,
   Package,
-  ShoppingBag
+  ShoppingBag,
+  X
 } from "lucide-react";
 import Link from "next/link";
 
 export default function OrderHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<any[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -214,18 +216,131 @@ export default function OrderHistoryPage() {
                       Rp {(order.total_price || 0).toLocaleString()}
                     </div>
                   </div>
-                  <Link
-                    href={`/order-tracking/${order.id}`}
+                  <button
+                    onClick={() => setSelectedOrder(order)}
                     className="flex items-center gap-1 text-[11px] font-black text-[#1a1a1a] hover:text-primary transition-colors bg-gray-50 px-3 py-2 rounded-xl"
                   >
                     Detail <ChevronRight size={14} />
-                  </Link>
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+      
+      {/* Order Detail Modal */}
+      {selectedOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md animate-in fade-in duration-300">
+          <div 
+            className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="p-6 border-b border-gray-50 flex items-center justify-between bg-white sticky top-0 z-10">
+              <div>
+                <h3 className="font-black text-xl text-[#1a1a1a]">Detail Pesanan</h3>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">
+                  #{selectedOrder.id.slice(0, 8).toUpperCase()} • {new Date(selectedOrder.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                </p>
+              </div>
+              <button 
+                onClick={() => setSelectedOrder(null)}
+                className="h-10 w-10 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar space-y-6">
+              {/* Status Section */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                <div className="flex items-center gap-3">
+                  <div className={`h-10 w-10 rounded-xl flex items-center justify-center border ${getStatusColor(selectedOrder.order_status)}`}>
+                    {getStatusIcon(selectedOrder.order_status)}
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Status</div>
+                    <div className="text-sm font-black text-[#1a1a1a] capitalize">{selectedOrder.order_status}</div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Pembayaran</div>
+                  <div className={`text-sm font-black ${selectedOrder.payment_status === 'paid' ? 'text-emerald-500' : 'text-amber-500'}`}>
+                    {selectedOrder.payment_status === 'paid' ? 'Paid' : 'Unpaid'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Items List */}
+              <div className="space-y-4">
+                <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest px-1">Ringkasan Produk</div>
+                {selectedOrder.order_items.map((item: any) => (
+                  <div key={item.id} className="flex items-center gap-4 group">
+                    <div className="w-14 h-14 rounded-2xl bg-gray-50 overflow-hidden border border-gray-100 flex-shrink-0">
+                      {item.menu?.image_url ? (
+                        <img
+                          src={item.menu.image_url}
+                          alt={item.menu.name}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-300">
+                          <Coffee size={24} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-black text-[#1a1a1a] truncate">
+                        {item.menu?.name}
+                      </div>
+                      <div className="text-xs text-gray-400 font-bold mt-0.5">
+                         {item.quantity}x {item.size || 'Regular'} • Rp {item.price.toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="text-sm font-black text-[#1a1a1a]">
+                      Rp {(item.price * item.quantity).toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Price Breakdown */}
+              <div className="pt-6 border-t border-gray-100 space-y-3">
+                <div className="flex justify-between text-xs font-bold text-gray-400">
+                  <span>Subtotal</span>
+                  <span className="text-[#1a1a1a]">Rp {(selectedOrder.total_price / 1.1).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                </div>
+                <div className="flex justify-between text-xs font-bold text-gray-400">
+                  <span>Pajak (10%)</span>
+                  <span className="text-[#1a1a1a]">Rp {(selectedOrder.total_price - (selectedOrder.total_price / 1.1)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                </div>
+                <div className="flex justify-between items-center pt-3 border-t border-gray-50">
+                  <span className="text-sm font-black text-[#1a1a1a]">Total Akhir</span>
+                  <span className="text-xl font-black text-primary italic">Rp {(selectedOrder.total_price || 0).toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 bg-gray-50/50 flex gap-3">
+              <Link 
+                href={`/order/tracking/${selectedOrder.id}`}
+                className="flex-1 bg-primary text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all text-center"
+              >
+                Lacak Live
+              </Link>
+              <button 
+                onClick={() => setSelectedOrder(null)}
+                className="px-6 py-4 bg-white border border-gray-100 text-gray-400 rounded-2xl font-black text-sm hover:text-red-500 transition-colors"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

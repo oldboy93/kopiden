@@ -217,22 +217,23 @@ export default function Dashboard() {
           </div>
           <div className="bg-white rounded-2xl p-4 text-center shadow-sm border border-gray-50">
             <div className="text-lg font-black text-primary">
-              {totalSpent > 0 ? `${(totalSpent / 1000).toFixed(0)}k` : "0"}
+              {totalSpent > 0 ? `Rp ${totalSpent.toLocaleString('id-ID')}` : "Rp 0"}
             </div>
-            <div className="text-xs text-gray-400 font-bold mt-0.5 uppercase tracking-tighter">
-              Spent (Rp)
+            <div className="text-[10px] text-gray-400 font-bold mt-0.5 uppercase tracking-tighter">
+              Total Spent
             </div>
           </div>
-          <div className="bg-white rounded-2xl p-4 text-center shadow-sm border border-gray-50 ring-2 ring-amber-100 relative overflow-hidden group">
-            <Sparkles className="absolute -right-2 -top-2 w-8 h-8 text-amber-200 opacity-20 group-hover:rotate-12 transition-transform" />
-            <div className="text-2xl font-black text-amber-600">
-              {profile?.loyalty_points || 0}
+          <Link href="/loyalty" className="bg-[#1a1a1a] rounded-2xl p-4 text-center shadow-lg border border-gray-800 relative overflow-hidden group hover:scale-[1.02] transition-transform">
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent"></div>
+            <Sparkles className="absolute -right-2 -top-2 w-10 h-10 text-amber-400/20 group-hover:rotate-12 transition-transform" />
+            <div className="text-2xl font-black text-amber-400 relative z-10">
+              {(profile?.loyalty_points || 0).toLocaleString()}
             </div>
-            <div className="text-xs text-gray-400 font-bold mt-0.5 uppercase tracking-tighter flex items-center justify-center gap-1">
-              Points{" "}
+            <div className="text-[10px] text-amber-400/60 font-black mt-0.5 uppercase tracking-widest flex items-center justify-center gap-1 relative z-10">
+              Gold Pts{" "}
               <Star size={10} className="fill-amber-400 text-amber-400" />
             </div>
-          </div>
+          </Link>
         </div>
 
         {/* Quick Actions */}

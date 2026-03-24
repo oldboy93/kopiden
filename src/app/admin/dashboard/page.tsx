@@ -64,6 +64,31 @@ export default function AdminDashboard() {
       setLoading(false);
     }
     checkAuthAndFetch();
+
+    // Notification Sound
+    const playNotification = () => {
+      const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+      audio.play().catch(e => console.log('Audio play failed:', e));
+    };
+
+    // Realtime Listener for New Orders
+    const channel = supabase
+      .channel('admin_orders_realtime')
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'orders' 
+      }, (payload) => {
+        console.log('New order received:', payload);
+        playNotification();
+        fetchStats();
+        fetchOrders();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [router]);
 
   async function fetchStats() {
