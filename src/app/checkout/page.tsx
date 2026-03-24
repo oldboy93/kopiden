@@ -70,6 +70,7 @@ export default function Checkout() {
       if (profile) {
         setFullName(profile.full_name || '');
         setEmail(profile.email || '');
+        setAddress(profile.address || '');
       }
     }
     

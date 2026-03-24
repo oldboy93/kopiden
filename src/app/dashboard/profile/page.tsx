@@ -119,10 +119,13 @@ export default function ProfilePage() {
       if (updateError) throw updateError;
 
       setProfile({ ...profile, avatar_url: publicUrl });
-      setStatus({ type: "success", msg: "Foto profil berhasil diperbarui!" });
+      setStatus({ type: "success", msg: "Foto profil berhasil diperbarui! ✨" });
     } catch (error: any) {
       console.error("Avatar error:", error);
-      setStatus({ type: "error", msg: "Gagal mengunggah foto profil." });
+      setStatus({ 
+        type: "error", 
+        msg: `Gagal mengunggah: ${error.message}. Pastikan bucket 'avatars' sudah ada dan bersifat publik.` 
+      });
     } finally {
       setSaving(false);
     }

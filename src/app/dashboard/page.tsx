@@ -236,31 +236,22 @@ export default function Dashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-3 mb-6">
-          <Link
-            href="/menu"
-            className="bg-white rounded-2xl p-5 flex items-center gap-4 border border-gray-50 shadow-sm hover:shadow-md hover:border-primary/20 transition-all group"
-          >
-            <div className="h-11 w-11 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-primary group-hover:text-white transition-colors text-primary">
-              <Coffee size={22} />
-            </div>
-            <div>
-              <div className="font-black text-[#1a1a1a] text-sm">
-                Browse Menu
-              </div>
-              <div className="text-xs text-gray-400">Order your brew</div>
-            </div>
-          </Link>
+        <div className="mb-6">
           <Link
             href="/cart"
-            className="bg-white rounded-2xl p-5 flex items-center gap-4 border border-gray-50 shadow-sm hover:shadow-md hover:border-primary/20 transition-all group"
+            className="bg-white rounded-3xl p-6 flex items-center justify-between border border-gray-50 shadow-sm hover:shadow-md hover:border-primary/20 transition-all group"
           >
-            <div className="h-11 w-11 bg-amber-50 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-amber-500 group-hover:text-white transition-colors text-amber-500">
-              <ShoppingBag size={22} />
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 bg-amber-50 rounded-2xl flex items-center justify-center flex-shrink-0 group-hover:bg-amber-500 group-hover:text-white transition-colors text-amber-500">
+                <ShoppingBag size={24} />
+              </div>
+              <div>
+                <div className="font-black text-[#1a1a1a] text-base">My Cart</div>
+                <div className="text-xs text-gray-400">View items in your coffee bag</div>
+              </div>
             </div>
-            <div>
-              <div className="font-black text-[#1a1a1a] text-sm">My Cart</div>
-              <div className="text-xs text-gray-400">View items</div>
+            <div className="h-10 w-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-300 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+              <ChevronRight size={20} />
             </div>
           </Link>
         </div>
@@ -280,12 +271,7 @@ export default function Dashboard() {
                 View All
               </Link>
               {orders.length > 0 && (
-                <Link
-                  href="/menu"
-                  className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
-                >
-                  New Order <ChevronRight size={14} />
-                </Link>
+                <div className="w-1 h-1 bg-gray-200 rounded-full"></div>
               )}
             </div>
           </div>

@@ -43,7 +43,7 @@ export default function OrderHistoryPage() {
           *,
           order_items (
             *,
-            menu_items (name, price, image_url)
+            menu (name, price, image_url)
           )
         `,
         )
@@ -66,8 +66,10 @@ export default function OrderHistoryPage() {
         return "bg-emerald-50 text-emerald-600 border-emerald-100";
       case "brewing":
         return "bg-amber-50 text-amber-600 border-amber-100";
-      case "pending":
+      case "processing":
         return "bg-blue-50 text-blue-600 border-blue-100";
+      case "pending":
+        return "bg-amber-50 text-amber-600 border-amber-100";
       case "cancelled":
         return "bg-red-50 text-red-600 border-red-100";
       default:
@@ -167,10 +169,10 @@ export default function OrderHistoryPage() {
                     </div>
                   </div>
                   <div
-                    className={`px-3 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 ${getStatusColor(order.status)}`}
+                    className={`px-3 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 ${getStatusColor(order.order_status)}`}
                   >
-                    {getStatusIcon(order.status)}
-                    {order.status}
+                    {getStatusIcon(order.order_status)}
+                    {order.order_status}
                   </div>
                 </div>
 
@@ -178,10 +180,10 @@ export default function OrderHistoryPage() {
                   {order.order_items.map((item: any) => (
                     <div key={item.id} className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-gray-50 overflow-hidden border border-gray-100 flex-shrink-0">
-                        {item.menu_items?.image_url ? (
+                        {item.menu?.image_url ? (
                           <img
-                            src={item.menu_items.image_url}
-                            alt={item.menu_items.name}
+                            src={item.menu.image_url}
+                            alt={item.menu.name}
                             className="w-full h-full object-cover"
                           />
                         ) : (
@@ -192,11 +194,11 @@ export default function OrderHistoryPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-xs font-black text-[#1a1a1a] truncate">
-                          {item.menu_items?.name}
+                          {item.menu?.name}
                         </div>
                         <div className="text-[10px] text-gray-400 font-bold">
                           {item.quantity}x • Rp{" "}
-                          {item.price_at_time.toLocaleString()}
+                          {item.price.toLocaleString()}
                         </div>
                       </div>
                     </div>
@@ -209,7 +211,7 @@ export default function OrderHistoryPage() {
                       Total Pembayaran
                     </div>
                     <div className="text-base font-black text-primary">
-                      Rp {order.total_amount.toLocaleString()}
+                      Rp {(order.total_price || 0).toLocaleString()}
                     </div>
                   </div>
                   <Link
