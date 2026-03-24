@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronRight, Filter } from 'lucide-react';
+import { ChevronRight, Filter, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCart } from '@/context/CartContext';
 import AppHeader from '@/components/AppHeader';
@@ -98,12 +98,7 @@ export default function Menu() {
                   <p className="text-gray-400 text-sm line-clamp-1">{item.description}</p>
                   <div className="flex justify-between items-center pt-2">
                     <span className="text-xl font-black text-[#1a1a1a]">Rp {item.price.toLocaleString('id-ID')}</span>
-                    <button 
-                      onClick={() => addToCart(item)}
-                      className="h-10 w-10 bg-secondary/30 rounded-full flex items-center justify-center hover:bg-primary hover:text-white transition-all text-primary font-bold active:scale-90"
-                    >
-                      +
-                    </button>
+                    <AddToCartButton item={item} addToCart={addToCart} />
                   </div>
                 </div>
               </div>
@@ -114,5 +109,28 @@ export default function Menu() {
         </div>
       </div>
     </div>
+  );
+}
+
+function AddToCartButton({ item, addToCart }: { item: any, addToCart: (item: any) => void }) {
+  const [added, setAdded] = useState(false);
+
+  const handleClick = () => {
+    addToCart(item);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1500);
+  };
+
+  return (
+    <button 
+      onClick={handleClick}
+      className={`h-11 w-11 rounded-full flex items-center justify-center transition-all duration-500 font-bold shadow-sm ${
+        added 
+        ? 'bg-primary text-white scale-110 shadow-primary/30 rotate-[360deg] animate-bounce-scale' 
+        : 'bg-secondary/30 text-primary hover:bg-primary hover:text-white active:scale-95'
+      }`}
+    >
+      {added ? <CheckCircle2 size={24} /> : <span className="text-xl">+</span>}
+    </button>
   );
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ShoppingBag, User, ArrowLeft } from 'lucide-react';
@@ -23,6 +24,15 @@ export default function AppHeader({
 }: AppHeaderProps) {
   const pathname = usePathname();
   const { totalItems } = useCart();
+  const [isBouncing, setIsBouncing] = useState(false);
+
+  useEffect(() => {
+    if (totalItems > 0) {
+      setIsBouncing(true);
+      const timer = setTimeout(() => setIsBouncing(false), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [totalItems]);
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
@@ -95,11 +105,11 @@ export default function AppHeader({
               {/* Cart Icon */}
               <Link
                 href="/cart"
-                className={`relative p-2.5 rounded-xl transition-colors ${
+                className={`relative p-2.5 rounded-xl transition-all ${
                   pathname === '/cart'
                     ? 'bg-primary text-white shadow-md shadow-primary/30'
                     : 'hover:bg-gray-100 text-gray-600'
-                }`}
+                } ${isBouncing ? 'animate-cart-bounce' : ''}`}
                 aria-label="Cart"
               >
                 <ShoppingBag size={20} />

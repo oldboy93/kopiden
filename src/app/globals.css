@@ -23,3 +23,28 @@ body {
   color: rgb(var(--foreground-rgb));
   background: white;
 }
+@layer utilities {
+  @keyframes bounce-scale {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+  }
+  .animate-bounce-scale {
+    animation: bounce-scale 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  @keyframes cart-bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px) scale(1.1); }
+  }
+  .animate-cart-bounce {
+    animation: cart-bounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  @keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fade-in-up {
+    animation: fade-in-up 0.3s ease-out forwards;
+  }
+}
