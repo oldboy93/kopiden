@@ -49,13 +49,13 @@ export default function MenuDetailModal({ isOpen, onClose, item, onAddToCart }: 
         {/* Mobile Close Button */}
         <button 
           onClick={onClose}
-          className="absolute top-6 right-6 z-20 p-3 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/40 transition-colors md:hidden"
+          className="absolute top-4 right-4 z-30 p-2.5 bg-black/60 backdrop-blur-md text-white rounded-full shadow-lg transition-all active:scale-90 md:hidden border border-white/20"
         >
-          <X size={24} />
+          <X size={20} />
         </button>
 
         {/* Left: Image Section */}
-        <div className="relative w-full md:w-[35%] h-[25vh] md:h-auto bg-gray-100 overflow-hidden">
+        <div className="relative w-full md:w-[35%] h-[18vh] md:h-auto bg-gray-100 overflow-hidden shrink-0">
           {item.image_url ? (
             <img 
               src={item.image_url} 
@@ -67,8 +67,8 @@ export default function MenuDetailModal({ isOpen, onClose, item, onAddToCart }: 
           )}
           
           {/* Label Tag */}
-          <div className="absolute top-6 left-6">
-            <span className="px-3 py-1.5 bg-primary/90 backdrop-blur-sm text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-full shadow-lg">
+          <div className="absolute top-4 left-4">
+            <span className="px-3 py-1 bg-primary/90 backdrop-blur-sm text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-lg">
               {item.category}
             </span>
           </div>
@@ -90,14 +90,14 @@ export default function MenuDetailModal({ isOpen, onClose, item, onAddToCart }: 
           <div className="flex-grow">
             <div className="flex items-center gap-2 text-amber-500 mb-3 animate-in slide-in-from-left-4 duration-500">
               <Star size={16} className="fill-amber-500" />
-              <span className="text-xs font-black tracking-tight uppercase">Top Selection</span>
+              <span className="text-[10px] font-black tracking-tight uppercase">Top Selection</span>
             </div>
 
-            <h2 className="text-3xl md:text-3xl font-black text-[#1a1a1a] mb-3 leading-tight tracking-tight">
+            <h2 className="text-2xl md:text-3xl font-black text-[#1a1a1a] mb-2 leading-tight tracking-tight">
               {item.name}
             </h2>
 
-            <div className="flex items-center gap-4 mb-6 text-gray-400">
+            <div className="flex items-center gap-4 mb-4 text-gray-400">
               <div className="flex items-center gap-2">
                 <Clock size={14} className="text-primary" />
                 <span className="text-xs font-bold">{item.preparation_time || '5-10 m'}</span>
@@ -109,56 +109,66 @@ export default function MenuDetailModal({ isOpen, onClose, item, onAddToCart }: 
               </div>
             </div>
 
-            <div className="space-y-5 mb-8">
+            <div className="space-y-4 mb-6">
               <div>
-                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Our Story</h4>
-                <p className="text-base text-gray-600 leading-relaxed font-medium">
+                <h4 className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Our Story</h4>
+                <p className="text-sm md:text-base text-gray-600 leading-relaxed font-medium">
                   {item.description || "Setiap cangkir menyajikan harmoni rasa yang dikurasi khusus untuk pecinta kopi sejati."}
                 </p>
               </div>
               
-              <div className="p-4 bg-[#fafafa] rounded-[1.5rem] border border-gray-100 flex items-start gap-3">
-                 <div className="h-8 w-8 bg-white rounded-lg shadow-sm flex items-center justify-center text-primary shrink-0">
-                    <Sparkles size={16} />
+              <div className="p-3 bg-[#fafafa] rounded-[1.25rem] border border-gray-100 flex items-start gap-3">
+                 <div className="h-7 w-7 bg-white rounded-lg shadow-sm flex items-center justify-center text-primary shrink-0">
+                    <Sparkles size={14} />
                  </div>
                  <div>
-                    <h5 className="font-bold text-[#1a1a1a] text-xs leading-none mb-1">{item.highlight_title || 'Signature Taste'}</h5>
-                    <p className="text-[10px] text-gray-400 font-medium leading-tight">{item.highlight_description || 'Unique blend that brings out the soul of every bean.'}</p>
+                    <h5 className="font-bold text-[#1a1a1a] text-[11px] leading-none mb-1">{item.highlight_title || 'Signature Taste'}</h5>
+                    <p className="text-[9px] text-gray-400 font-medium leading-tight">{item.highlight_description || 'Unique blend that brings out the soul of every bean.'}</p>
                  </div>
               </div>
             </div>
           </div>
 
           {/* Footer Action */}
-          <div className="pt-6 border-t border-gray-50 flex flex-row items-center justify-between gap-4">
-            <div className="text-left">
-              <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-0.5">Price</p>
-              <p className="text-2xl font-black text-primary">
+          <div className="pt-5 border-t border-gray-100 flex items-center justify-between gap-3">
+            <div className="text-left shrink-0">
+              <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-0.5">Price</p>
+              <p className="text-xl md:text-2xl font-black text-primary">
                 Rp {item.price.toLocaleString('id-ID')}
               </p>
             </div>
             
-            <button 
-              onClick={handleAdd}
-              disabled={added}
-              className={`px-8 py-4 rounded-[1.5rem] font-extrabold text-base flex items-center justify-center gap-2 transition-all duration-500 shadow-xl scale-100 active:scale-95 ${
-                added 
-                ? 'bg-emerald-500 text-white shadow-emerald-500/30' 
-                : 'bg-[#1a1a1a] text-white hover:bg-emerald-600 shadow-black/20'
-              }`}
-            >
-              {added ? (
-                <>
-                  <CheckCircle2 size={20} />
-                  Done
-                </>
-              ) : (
-                <>
-                  <ShoppingBag size={20} />
-                  Add
-                </>
-              )}
-            </button>
+            <div className="flex items-center gap-2 flex-grow justify-end">
+              {/* Secondary Mobile Close Button */}
+              <button 
+                onClick={onClose}
+                className="px-4 py-4 rounded-[1.25rem] border border-gray-100 text-gray-400 font-bold text-sm hover:bg-gray-50 md:hidden"
+              >
+                Tutup
+              </button>
+              
+              <button 
+                onClick={handleAdd}
+                disabled={added}
+                className={`px-6 py-4 md:px-8 rounded-[1.25rem] font-black text-sm md:text-base flex items-center justify-center gap-2 transition-all duration-500 shadow-xl scale-100 active:scale-95 flex-grow sm:flex-grow-0 ${
+                  added 
+                  ? 'bg-emerald-500 text-white shadow-emerald-500/30' 
+                  : 'bg-[#1a1a1a] text-white hover:bg-emerald-600 shadow-black/20'
+                }`}
+              >
+                {added ? (
+                  <>
+                    <CheckCircle2 size={18} />
+                    Siap!
+                  </>
+                ) : (
+                  <>
+                    <ShoppingBag size={18} />
+                    Tambah
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
