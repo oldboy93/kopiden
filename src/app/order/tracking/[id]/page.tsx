@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use } from 'react';
 import Link from 'next/link';
-import { Coffee, MapPin, CheckCircle2, Clock, Loader2 } from 'lucide-react';
+import { Coffee, MapPin, CheckCircle2, Clock, Loader2, Sparkles } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 interface OrderStep {
@@ -16,6 +16,7 @@ export default function OrderTracking({ params }: { params: Promise<{ id: string
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const handleConfirmReceipt = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -52,10 +53,9 @@ export default function OrderTracking({ params }: { params: Promise<{ id: string
       
       // Update local state
       setOrder((prev: any) => ({ ...prev, order_status: 'completed', proof_image_url: publicUrl }));
-      alert('Terima kasih! Pesanan Anda telah selesai.');
+      setShowSuccessModal(true);
     } catch (err: any) {
       console.error('Confirm receipt error:', err);
-      alert('Gagal mengonfirmasi pesanan: ' + err.message);
     } finally {
       setUploading(false);
     }
@@ -150,7 +150,7 @@ export default function OrderTracking({ params }: { params: Promise<{ id: string
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
-      <nav className="px-5 md:px-8 py-6 flex items-center justify-between border-b bg-white backdrop-blur-md sticky top-0 z-50">
+      <nav className="px-5 md:px-8 py-6 flex items-center justify-between border-b bg-white/80 backdrop-blur-md sticky top-0 z-50">
         <Link href="/" className="font-black text-2xl text-primary tracking-tighter">Kopiden</Link>
         <span className="font-black text-[10px] md:text-sm tracking-widest text-gray-400 uppercase">Order #{order.id.slice(0, 8).toUpperCase()}</span>
         <div className="w-10"></div>
@@ -208,52 +208,64 @@ export default function OrderTracking({ params }: { params: Promise<{ id: string
 
           {/* Confirm Receipt Section */}
           {order.order_status === 'on_the_way' && (
-            <div className="mt-8 p-8 bg-primary/5 rounded-[2.5rem] border border-primary/10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-              <h3 className="text-xl font-black mb-2 flex items-center gap-2">
-                <CheckCircle2 className="text-primary" size={20} />
-                Pesanan Sudah Sampai?
-              </h3>
-              <p className="text-sm text-gray-400 font-medium mb-6">
-                Mohon ambil foto kopi Anda sebagai bukti penerimaan sebelum menekan tombol konfirmasi.
-              </p>
-              
-              <div className="space-y-4">
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  capture="environment"
-                  onChange={handleConfirmReceipt}
-                  id="proof-upload"
-                  className="hidden"
-                  disabled={uploading}
-                />
-                <label 
-                  htmlFor="proof-upload"
-                  className="w-full flex flex-col items-center justify-center p-8 bg-white border-2 border-dashed border-gray-200 rounded-3xl hover:border-primary/30 cursor-pointer transition-all group"
-                >
-                  {uploading ? (
-                    <Loader2 className="animate-spin text-primary" size={32} />
-                  ) : (
-                    <>
-                      <div className="h-12 w-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300 mb-3 group-hover:scale-110 transition-transform">
-                        <MapPin size={24} />
-                      </div>
-                      <span className="text-sm font-bold text-gray-400 group-hover:text-primary">Ambil Foto Bukti</span>
-                    </>
-                  )}
-                </label>
+            <div className="mt-8 relative animate-in fade-in slide-in-from-bottom-4 duration-700">
+              <div className="bg-[#1a1a1a] p-8 md:p-10 rounded-[2.5rem] md:rounded-[3rem] text-white relative overflow-hidden group">
+                <Sparkles className="absolute top-4 right-8 text-amber-400/20 w-12 h-12 animate-pulse" />
+                <div className="relative z-10">
+                  <h3 className="text-2xl font-black mb-3">Pesanan Sampai! 🎉</h3>
+                  <p className="text-white/60 text-sm font-medium mb-8 max-w-sm">
+                    Kopimu sudah tiba? Yuk ambil foto kopinya sebagai bukti penerimaan untuk menyelesaikan pesanan.
+                  </p>
+                  
+                  <div className="space-y-4">
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      capture="environment"
+                      onChange={handleConfirmReceipt}
+                      id="proof-upload"
+                      className="hidden"
+                      disabled={uploading}
+                    />
+                    <label 
+                      htmlFor="proof-upload"
+                      className={`w-full flex items-center justify-center gap-4 p-6 rounded-3xl cursor-pointer transition-all border-2 border-dashed ${
+                        uploading 
+                        ? 'bg-white/5 border-white/10' 
+                        : 'bg-white/10 border-white/20 hover:bg-white/20 hover:border-primary active:scale-95'
+                      }`}
+                    >
+                      {uploading ? (
+                        <div className="flex items-center gap-3">
+                          <Loader2 className="animate-spin text-primary" size={24} />
+                          <span className="font-bold text-white/50">Mengunggah Bukti...</span>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="h-12 w-12 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary/30">
+                            <MapPin size={24} />
+                          </div>
+                          <div className="text-left">
+                            <p className="font-black text-white">Ambil Foto Bukti</p>
+                            <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Gunakan Kamera Belakang</p>
+                          </div>
+                        </>
+                      )}
+                    </label>
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
           {order.order_status === 'completed' && order.proof_image_url && (
             <div className="mt-8 p-8 bg-emerald-50 rounded-[2.5rem] border border-emerald-100 flex items-center gap-6">
-               <div className="h-16 w-16 bg-white rounded-2xl overflow-hidden border border-emerald-50 shrink-0">
+               <div className="h-16 w-16 bg-white rounded-2xl overflow-hidden border border-emerald-50 shrink-0 shadow-sm">
                   <img src={order.proof_image_url} alt="Proof" className="w-full h-full object-cover" />
                </div>
                <div>
-                  <h4 className="text-lg font-black text-emerald-600">Pesanan Diterima</h4>
-                  <p className="text-xs text-emerald-400 font-bold uppercase tracking-widest">Terima kasih sudah memesan!</p>
+                  <h4 className="text-lg font-black text-emerald-600">Terima Kasih!</h4>
+                  <p className="text-xs text-emerald-400 font-bold uppercase tracking-widest">Pesanan Selesai & Diterima</p>
                </div>
             </div>
           )}
@@ -266,6 +278,44 @@ export default function OrderTracking({ params }: { params: Promise<{ id: string
           Back to Dashboard
         </Link>
       </div>
+
+      {/* Success Delivery Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 sm:p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-500"></div>
+          <div className="bg-white w-full max-w-md rounded-[3rem] p-8 md:p-12 relative z-10 shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-8 duration-500 overflow-hidden">
+             {/* Decorative Background */}
+             <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-emerald-50 to-transparent -z-10"></div>
+             
+             <div className="relative flex flex-col items-center text-center">
+                <div className="h-24 w-24 bg-emerald-500 text-white rounded-[2rem] flex items-center justify-center mb-8 shadow-2xl shadow-emerald-500/30 rotate-3">
+                   <CheckCircle2 size={48} />
+                </div>
+                
+                <h2 className="text-3xl font-black text-[#1a1a1a] mb-4">Enjoy Your Coffee! ☕</h2>
+                <p className="text-gray-500 font-medium mb-10 leading-relaxed">
+                  Terima kasih sudah memesan di Kopiden by UAY. Jangan lupa ajak temanmu dan kumpulkan poin loyalitasnya!
+                </p>
+
+                {order.proof_image_url && (
+                  <div className="w-full aspect-video rounded-3xl overflow-hidden mb-10 border border-gray-100 shadow-sm relative group">
+                    <img src={order.proof_image_url} alt="Delivered" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                       <span className="px-4 py-2 bg-white/90 backdrop-blur-sm rounded-full text-xs font-black uppercase tracking-widest">Bukti Penerimaan</span>
+                    </div>
+                  </div>
+                )}
+
+                <button 
+                  onClick={() => setShowSuccessModal(false)}
+                  className="w-full py-5 bg-[#1a1a1a] text-white rounded-[2rem] font-black text-lg hover:bg-emerald-600 transition-all shadow-xl shadow-black/20 active:scale-95"
+                >
+                  Sama-sama!
+                </button>
+             </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

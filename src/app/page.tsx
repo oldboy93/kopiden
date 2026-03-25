@@ -5,10 +5,15 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import AppHeader from '@/components/AppHeader';
+import MenuDetailModal from '@/components/MenuDetailModal';
+import { useCart } from '@/context/CartContext';
 
 export default function Home() {
   const [favorites, setFavorites] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { addToCart } = useCart();
 
   useEffect(() => {
     async function fetchFavorites() {
@@ -22,6 +27,11 @@ export default function Home() {
     fetchFavorites();
     checkUser();
   }, []);
+
+  const handleOpenDetail = (item: any) => {
+    setSelectedItem(item);
+    setIsModalOpen(true);
+  };
 
   return (
     <main className="min-h-screen bg-white">
@@ -75,7 +85,10 @@ export default function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {favorites.length > 0 ? favorites.map((item) => (
               <div key={item.id} className="group bg-white p-4 rounded-3xl shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 border border-gray-100">
-                <Link href={`/menu/${item.id}`} className="block">
+                <button 
+                  onClick={() => handleOpenDetail(item)}
+                  className="block w-full text-left"
+                >
                   <div className="relative h-64 w-full rounded-2xl bg-gray-50 mb-6 overflow-hidden">
                      {item.image_url ? (
                        <Image 
@@ -88,7 +101,7 @@ export default function Home() {
                        <div className="absolute inset-0 flex items-center justify-center opacity-20 group-hover:scale-110 transition-transform duration-700 text-4xl">☕</div>
                      )}
                   </div>
-                </Link>
+                </button>
                 <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">{item.name}</h3>
                 <p className="text-gray-400 text-sm mb-4 line-clamp-1">{item.description}</p>
                 <div className="flex justify-between items-center">
@@ -103,6 +116,14 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Menu Detail Modal */}
+      <MenuDetailModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        item={selectedItem}
+        onAddToCart={addToCart}
+      />
     </main>
   );
 }

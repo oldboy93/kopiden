@@ -7,6 +7,7 @@ import { ChevronRight, Filter, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCart } from '@/context/CartContext';
 import AppHeader from '@/components/AppHeader';
+import MenuDetailModal from '@/components/MenuDetailModal';
 
 export default function Menu() {
   const { addToCart, totalItems } = useCart();
@@ -15,6 +16,8 @@ export default function Menu() {
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     async function fetchMenu() {
@@ -34,6 +37,11 @@ export default function Menu() {
     fetchMenu();
     checkUser();
   }, [activeCategory]);
+
+  const handleOpenDetail = (item: any) => {
+    setSelectedItem(item);
+    setIsModalOpen(true);
+  };
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
@@ -76,7 +84,10 @@ export default function Menu() {
           ) : menuItems.length > 0 ? (
             menuItems.map((item) => (
               <div key={item.id} className="group">
-                <Link href={`/menu/${item.id}`} className="block">
+                <button 
+                  onClick={() => handleOpenDetail(item)}
+                  className="block w-full text-left"
+                >
                   <div className="relative aspect-[4/5] rounded-[2.5rem] overflow-hidden bg-gray-100 mb-6 shadow-sm group-hover:shadow-2xl transition-all duration-500">
                     {item.image_url ? (
                       <Image 
@@ -92,7 +103,7 @@ export default function Menu() {
                        <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-primary text-[10px] font-black uppercase tracking-widest rounded-full">{item.category}</span>
                     </div>
                   </div>
-                </Link>
+                </button>
                 <div className="space-y-1">
                   <h3 className="text-xl font-bold group-hover:text-primary transition-colors">{item.name}</h3>
                   <p className="text-gray-400 text-sm line-clamp-1">{item.description}</p>
@@ -108,6 +119,13 @@ export default function Menu() {
           )}
         </div>
       </div>
+
+      <MenuDetailModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        item={selectedItem}
+        onAddToCart={addToCart}
+      />
     </div>
   );
 }

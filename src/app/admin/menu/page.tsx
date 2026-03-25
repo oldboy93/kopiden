@@ -34,7 +34,11 @@ export default function MenuManagement() {
     category: 'Coffee',
     price: '',
     description: '',
-    image_url: ''
+    image_url: '',
+    preparation_time: '5-10 m',
+    serving_note: 'Best Served Cold',
+    highlight_title: 'Signature Taste',
+    highlight_description: 'Unique blend that brings out the soul of every bean.'
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -64,7 +68,11 @@ export default function MenuManagement() {
         category: item.category,
         price: item.price.toString(),
         description: item.description || '',
-        image_url: item.image_url || ''
+        image_url: item.image_url || '',
+        preparation_time: item.preparation_time || '5-10 m',
+        serving_note: item.serving_note || 'Best Served Cold',
+        highlight_title: item.highlight_title || 'Signature Taste',
+        highlight_description: item.highlight_description || 'Unique blend that brings out the soul of every bean.'
       });
     } else {
       setEditingItem(null);
@@ -73,7 +81,11 @@ export default function MenuManagement() {
         category: 'Coffee',
         price: '',
         description: '',
-        image_url: ''
+        image_url: '',
+        preparation_time: '5-10 m',
+        serving_note: 'Best Served Cold',
+        highlight_title: 'Signature Taste',
+        highlight_description: 'Unique blend that brings out the soul of every bean.'
       });
     }
     setIsModalOpen(true);
@@ -306,22 +318,73 @@ export default function MenuManagement() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-400 mb-2">Image URL</label>
-                  <div className="flex gap-4">
+                  <label className="block text-sm font-bold text-gray-400 mb-2">Menu Image</label>
+                  <div className="space-y-4">
                     <input 
-                      type="text" 
-                      value={formData.image_url}
-                      onChange={(e) => setFormData({...formData, image_url: e.target.value})}
-                      placeholder="/images/example.png"
-                      className="flex-grow px-6 py-4 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/10" 
+                      type="file" 
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        
+                        setIsSubmitting(true);
+                        try {
+                          const fileExt = file.name.split('.').pop();
+                          const fileName = `${Math.random()}.${fileExt}`;
+                          const filePath = `${fileName}`;
+
+                          const { data, error } = await supabase.storage
+                            .from('menu-items')
+                            .upload(filePath, file);
+
+                          if (error) throw error;
+
+                          const { data: { publicUrl } } = supabase.storage
+                            .from('menu-items')
+                            .getPublicUrl(filePath);
+
+                          setFormData({ ...formData, image_url: publicUrl });
+                        } catch (err: any) {
+                          console.error('Upload failed:', err);
+                          alert('Upload failed: ' + err.message);
+                        } finally {
+                          setIsSubmitting(false);
+                        }
+                      }}
+                      id="menu-image-upload"
+                      className="hidden"
                     />
-                    <div className="h-14 w-14 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300">
-                      <ImageIcon size={24} />
-                    </div>
+                    
+                    {formData.image_url ? (
+                      <div className="relative h-48 w-full rounded-2xl overflow-hidden group">
+                        <img src={formData.image_url} alt="Preview" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                          <label 
+                            htmlFor="menu-image-upload"
+                            className="px-6 py-2 bg-white text-black rounded-full font-bold text-sm cursor-pointer hover:bg-emerald-500 hover:text-white transition-all scale-90 group-hover:scale-100 duration-300"
+                          >
+                            Change Photo
+                          </label>
+                        </div>
+                      </div>
+                    ) : (
+                      <label 
+                        htmlFor="menu-image-upload"
+                        className="w-full h-48 bg-gray-50 border-2 border-dashed border-gray-100 rounded-[2rem] flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-emerald-500/30 hover:bg-emerald-50/10 transition-all group"
+                      >
+                         <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-gray-300 shadow-sm group-hover:scale-110 transition-transform">
+                            <ImageIcon size={24} />
+                         </div>
+                         <div className="text-center">
+                            <p className="text-sm font-bold text-gray-400 group-hover:text-emerald-500 transition-colors">Click to Upload Image</p>
+                            <p className="text-[10px] font-black uppercase text-gray-300 tracking-widest mt-1">PNG, JPG up to 5MB</p>
+                         </div>
+                      </label>
+                    )}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-400 mb-2">Description</label>
+                  <label className="block text-sm font-bold text-gray-400 mb-2">Description / Our Story</label>
                   <textarea 
                     rows={3}
                     value={formData.description}
@@ -329,6 +392,53 @@ export default function MenuManagement() {
                     placeholder="Brief details about this item..."
                     className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/10 resize-none" 
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-400 mb-2">Prep Time</label>
+                    <input 
+                      type="text" 
+                      value={formData.preparation_time}
+                      onChange={(e) => setFormData({...formData, preparation_time: e.target.value})}
+                      placeholder="e.g. 5-10 m"
+                      className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/10" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-400 mb-2">Serving Note</label>
+                    <input 
+                      type="text" 
+                      value={formData.serving_note}
+                      onChange={(e) => setFormData({...formData, serving_note: e.target.value})}
+                      placeholder="e.g. Best Served Cold"
+                      className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/10" 
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-2">Signature Highlight</h4>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-400 mb-2">Highlight Title</label>
+                    <input 
+                      type="text" 
+                      value={formData.highlight_title}
+                      onChange={(e) => setFormData({...formData, highlight_title: e.target.value})}
+                      placeholder="e.g. Signature Taste"
+                      className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/10" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-400 mb-2">Highlight Description</label>
+                    <textarea 
+                      rows={2}
+                      value={formData.highlight_description}
+                      onChange={(e) => setFormData({...formData, highlight_description: e.target.value})}
+                      placeholder="e.g. Unique blend that brings out the soul of every bean."
+                      className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/10 resize-none" 
+                    />
+                  </div>
                 </div>
 
                 <button 
