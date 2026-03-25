@@ -71,13 +71,14 @@ export default function ProfilePage() {
     try {
       const { error } = await supabase
         .from("profiles")
-        .update({
+        .upsert({
+          id: user.id,
+          email: user.email,
           full_name: profile.full_name,
           username: profile.username,
           address: profile.address,
           updated_at: new Date().toISOString(),
-        })
-        .eq("id", user.id);
+        });
 
       if (error) throw error;
       setStatus({ type: "success", msg: "Profil berhasil diperbarui! ✨" });
@@ -113,8 +114,11 @@ export default function ProfilePage() {
 
       const { error: updateError } = await supabase
         .from("profiles")
-        .update({ avatar_url: publicUrl })
-        .eq("id", user.id);
+        .upsert({ 
+          id: user.id,
+          email: user.email,
+          avatar_url: publicUrl 
+        });
 
       if (updateError) throw updateError;
 
