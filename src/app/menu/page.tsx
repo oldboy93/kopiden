@@ -1,23 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
-import { ChevronRight, Filter, CheckCircle2 } from 'lucide-react';
+import { ChevronRight, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCart } from '@/context/CartContext';
 import AppHeader from '@/components/AppHeader';
 import MenuDetailModal from '@/components/MenuDetailModal';
 
-export default function Menu() {
-  const { addToCart, totalItems, setTableNumber, tableNumber } = useCart();
+function MenuContent() {
+  const { addToCart, setTableNumber } = useCart();
   const searchParams = useSearchParams();
-  const [categories, setCategories] = useState(['All', 'Coffee', 'Non-Coffee', 'Snacks']);
+  const [categories] = useState(['All', 'Coffee', 'Non-Coffee', 'Snacks']);
   const [activeCategory, setActiveCategory] = useState('All');
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -32,12 +31,7 @@ export default function Menu() {
       if (!error && data) setMenuItems(data);
       setLoading(false);
     }
-    async function checkUser() {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-    }
     fetchMenu();
-    checkUser();
   }, [activeCategory]);
 
   useEffect(() => {
@@ -56,85 +50,90 @@ export default function Menu() {
     <div className="min-h-screen bg-[#fafafa]">
       <AppHeader title="Menu" />
 
-      <div className="container mx-auto px-5 md:px-8 py-8 md:py-12">
+      <div className="container mx-auto px-5 md:px-8 py-8 md:py-12 pb-24">
         <header className="mb-8 md:mb-12">
-          <div className="hidden md:flex items-center gap-2 text-sm text-gray-400 mb-3">
-            <Link href="/" className="hover:text-primary transition-colors">Home</Link>
-            <ChevronRight size={14} />
-            <span className="text-gray-900 font-medium">Menu</span>
+          <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-widest mb-3">
+             <span className="h-1.5 w-1.5 rounded-full bg-primary"></span>
+             Kopiden Signature
           </div>
-          <h1 className="text-3xl md:text-5xl font-extrabold text-[#1a1a1a]">Choose Your Brew</h1>
+          <h1 className="text-4xl md:text-5xl font-black text-[#1a1a1a] mb-2">Brewing Moments</h1>
+          <p className="text-gray-400 font-medium">Temukan kopi terbaik untuk harimu.</p>
         </header>
 
-        {/* Filter Bar */}
-        <div className="flex flex-wrap gap-3 mb-12">
-          {categories.map((cat) => (
+        {/* Categories */}
+        <div className="flex overflow-x-auto pb-6 gap-3 no-scrollbar -mx-5 px-5 md:mx-0 md:px-0">
+          {categories.map(cat => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${
+              className={`px-8 py-4 rounded-2xl whitespace-nowrap font-black uppercase tracking-widest text-xs transition-all ${
                 activeCategory === cat 
-                ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-105' 
-                : 'bg-white text-gray-400 hover:text-gray-600 border border-gray-100'
+                  ? 'bg-[#1a1a1a] text-white shadow-2xl shadow-black/20 scale-105' 
+                  : 'bg-white text-gray-400 hover:text-gray-600 border border-gray-100'
               }`}
             >
               {cat}
             </button>
           ))}
-          <button className="ml-auto px-4 py-2 bg-white border border-gray-100 rounded-full text-gray-500 hover:text-primary flex items-center gap-2 transition-colors">
-            <Filter size={16} /> Filters
-          </button>
         </div>
 
         {/* Menu Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-12">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8 mt-4">
           {loading ? (
-            <div className="col-span-full py-20 text-center text-gray-400 italic">Brewing your menu...</div>
+            Array(8).fill(0).map((_, i) => (
+              <div key={i} className="animate-pulse bg-white rounded-[2rem] aspect-[4/5]" />
+            ))
           ) : menuItems.length > 0 ? (
-            menuItems.map((item) => (
-              <div key={item.id} className="group">
-                <button 
-                  onClick={() => handleOpenDetail(item)}
-                  className="block w-full text-left"
-                >
-                  <div className="relative aspect-[4/5] rounded-[2.5rem] overflow-hidden bg-gray-100 mb-6 shadow-sm group-hover:shadow-2xl transition-all duration-500">
-                    {item.image_url ? (
-                      <Image 
-                        src={item.image_url} 
-                        alt={item.name} 
-                        fill 
-                        className="object-cover group-hover:scale-110 transition-transform duration-700" 
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center opacity-20 group-hover:scale-110 transition-transform duration-700 text-6xl">☕</div>
-                    )}
-                    <div className="absolute top-4 left-4 z-10">
-                       <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-primary text-[10px] font-black uppercase tracking-widest rounded-full">{item.category}</span>
-                    </div>
+            menuItems.map(item => (
+              <div 
+                key={item.id} 
+                className="bg-white rounded-[2rem] p-4 group hover:shadow-2xl transition-all cursor-pointer border border-gray-50 flex flex-col h-full"
+                onClick={() => handleOpenDetail(item)}
+              >
+                <div className="relative aspect-square rounded-[1.5rem] overflow-hidden mb-5 bg-gray-50">
+                  {item.image_url ? (
+                    <Image 
+                      src={item.image_url} 
+                      alt={item.name} 
+                      fill 
+                      className="object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-200 uppercase font-black tracking-widest text-[10px]">No Image</div>
+                  )}
+                </div>
+                <div className="flex-grow">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-primary mb-1 opacity-70 italic">{item.category}</div>
+                  <h3 className="font-bold text-lg text-[#1a1a1a] mb-1 group-hover:text-primary transition-colors">{item.name}</h3>
+                  <div className="text-gray-400 text-xs font-medium line-clamp-2 leading-relaxed h-8 mb-4">
+                    {item.description || "The finest roast in the neighborhood."}
                   </div>
-                </button>
-                <div className="space-y-1">
-                  <h3 className="text-xl font-bold group-hover:text-primary transition-colors">{item.name}</h3>
-                  <p className="text-gray-400 text-sm line-clamp-1">{item.description}</p>
-                  <div className="flex justify-between items-center pt-2">
-                    <span className="text-xl font-black text-[#1a1a1a]">Rp {item.price.toLocaleString('id-ID')}</span>
-                    <AddToCartButton item={item} addToCart={addToCart} />
-                  </div>
+                </div>
+                <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-50">
+                   <div className="font-black text-lg">Rp {item.price.toLocaleString('id-ID')}</div>
+                   <AddToCartButton item={item} addToCart={addToCart} />
                 </div>
               </div>
             ))
           ) : (
-            <div className="col-span-full py-20 text-center text-gray-400">No items found in this category.</div>
+            <div className="col-span-full py-20 text-center text-gray-400">
+              <p className="font-bold uppercase tracking-widest text-xs">No items found.</p>
+            </div>
           )}
         </div>
       </div>
 
-      <MenuDetailModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        item={selectedItem}
-        onAddToCart={addToCart}
-      />
+      {isModalOpen && selectedItem && (
+        <MenuDetailModal
+          item={selectedItem}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onAddToCart={(itemWithOptions) => {
+            addToCart(itemWithOptions);
+            setIsModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -142,7 +141,8 @@ export default function Menu() {
 function AddToCartButton({ item, addToCart }: { item: any, addToCart: (item: any) => void }) {
   const [added, setAdded] = useState(false);
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     addToCart(item);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
@@ -159,5 +159,20 @@ function AddToCartButton({ item, addToCart }: { item: any, addToCart: (item: any
     >
       {added ? <CheckCircle2 size={24} /> : <span className="text-xl">+</span>}
     </button>
+  );
+}
+
+export default function MenuPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#fafafa]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+          <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">Brewing Menu...</p>
+        </div>
+      </div>
+    }>
+      <MenuContent />
+    </Suspense>
   );
 }

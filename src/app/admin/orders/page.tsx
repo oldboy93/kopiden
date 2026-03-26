@@ -135,6 +135,7 @@ export default function AdminOrders() {
           status: order.order_status,
           paymentStatus: order.payment_status,
           paymentMethod: order.payment_method,
+          address: order.delivery_address,
           date: new Date(order.created_at).toLocaleDateString('id-ID'),
           time: new Date(order.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
         }));
@@ -166,10 +167,11 @@ export default function AdminOrders() {
           items: order.order_items?.map((item: any) => `${item.quantity}x ${item.menu?.name}`).join(', ') || 'No items',
           total: `Rp ${order.total_price.toLocaleString('id-ID')}`,
           status: order.order_status,
-          paymentStatus: order.payment_status,
-          paymentMethod: order.payment_method,
-          date: new Date(order.created_at).toLocaleDateString('id-ID'),
-          time: new Date(order.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+            paymentStatus: order.payment_status,
+            paymentMethod: order.payment_method,
+            address: order.delivery_address,
+            date: new Date(order.created_at).toLocaleDateString('id-ID'),
+            time: new Date(order.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
         };
         return formatted;
       }
@@ -321,7 +323,7 @@ export default function AdminOrders() {
             </div>
           ) : orders.filter(o => {
             if (activeTab === 'cashier') return o.paymentStatus === 'waiting_at_counter';
-            if (activeTab === 'barista') return o.paymentStatus === 'paid' && (o.status === 'pending' || o.status === 'processing' || o.status === 'brewing');
+            if (activeTab === 'barista') return o.paymentStatus === 'paid' && (o.status === 'pending' || o.status === 'processing' || o.status === 'brewing' || o.status === 'on_the_way');
             return true;
           }).length === 0 ? (
             <div className="text-center py-20 bg-white rounded-[2.5rem] border-2 border-dashed border-gray-100">
@@ -330,7 +332,7 @@ export default function AdminOrders() {
             </div>
           ) : orders.filter(o => {
             if (activeTab === 'cashier') return o.paymentStatus === 'waiting_at_counter';
-            if (activeTab === 'barista') return o.paymentStatus === 'paid' && (o.status === 'pending' || o.status === 'processing' || o.status === 'brewing');
+            if (activeTab === 'barista') return o.paymentStatus === 'paid' && (o.status === 'pending' || o.status === 'processing' || o.status === 'brewing' || o.status === 'on_the_way');
             return true;
           }).map((order, i) => (
             <div key={i} className="bg-white p-5 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-8 group hover:shadow-xl transition-all border border-gray-50 relative overflow-hidden">
@@ -343,11 +345,24 @@ export default function AdminOrders() {
                   <span className="text-[10px] sm:text-xs text-gray-400 font-medium">• {order.time}</span>
                   {order.table && (
                     <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-black rounded-lg">
-                      MEJA {order.table}
+                      {order.table === 'Delivery' ? 'DIGOS' : `MEJA ${order.table}`}
+                    </span>
+                  )}
+                  {order.address && (
+                    <span className="px-2 py-0.5 bg-blue-50 text-blue-500 text-[10px] font-black rounded-lg flex items-center gap-1">
+                      <MapPin size={10} /> DELIVERY
                     </span>
                   )}
                 </div>
-                <p className="text-gray-500 text-xs sm:text-sm font-medium truncate max-w-full">{order.items}</p>
+                <p className="text-gray-500 text-xs sm:text-sm font-medium truncate max-w-full italic mb-1">
+                  {order.items}
+                </p>
+                {order.address && (
+                  <div className="flex items-start gap-1.5 text-[11px] text-gray-400 bg-gray-50 p-2 rounded-xl border border-gray-100 mt-2">
+                    <MapPin className="mt-0.5 flex-shrink-0" size={12} />
+                    <span className="line-clamp-2">{order.address}</span>
+                  </div>
+                )}
               </div>
               <div className="flex sm:flex-col items-center sm:items-center gap-3 sm:gap-1 px-0 sm:px-8 sm:border-x border-gray-50 w-full sm:w-auto pt-4 sm:pt-0 border-t sm:border-t-0 mt-2 sm:mt-0">
                 <p className="text-[10px] text-gray-400 uppercase tracking-widest font-black hidden sm:block">Status</p>

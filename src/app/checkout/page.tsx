@@ -31,18 +31,20 @@ declare global {
 }
 
 export default function Checkout() {
-  const { cart, subtotal, clearCart, tableNumber } = useCart();
+  const { cart, subtotal, clearCart, tableNumber: contextTableNumber } = useCart();
   const [step, setStep] = useState(1); // 1: Info, 2: Payment, 3: Success
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'midtrans' | 'cashier' | 'manual'>('midtrans');
-  const [orderType, setOrderType] = useState<'dine-in' | 'takeaway'>(tableNumber ? 'dine-in' : 'takeaway');
+
+  const [paymentMethod, setPaymentMethod] = useState<'midtrans' | 'cashier'>('midtrans');
+  const [orderType, setOrderType] = useState<'dine-in' | 'takeaway' | 'delivery'>(contextTableNumber ? 'dine-in' : 'takeaway');
 
   // Form State
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
+  const [tableNumber, setTableNumber] = useState('');
 
   // Voucher State
   const [voucherCode, setVoucherCode] = useState('');
@@ -53,6 +55,13 @@ export default function Checkout() {
   // Points State
   const [availablePoints, setAvailablePoints] = useState(0);
   const [usePoints, setUsePoints] = useState(false);
+
+  useEffect(() => {
+    if (contextTableNumber) {
+      setTableNumber(contextTableNumber);
+      setOrderType('dine-in');
+    }
+  }, [contextTableNumber]);
 
   const tax = subtotal * 0.1;
   const discountAmount = appliedVoucher ? (subtotal * appliedVoucher.discount_percent / 100) : 0;
@@ -138,7 +147,8 @@ export default function Checkout() {
         .insert({
           user_id: user?.id || null,
           customer_name_guest: !user ? fullName : null,
-          table_number: orderType === 'dine-in' ? tableNumber : 'Takeaway',
+          table_number: orderType === 'delivery' ? 'Delivery' : (orderType === 'dine-in' ? tableNumber : 'Takeaway'),
+          delivery_address: orderType === 'delivery' ? address : null,
           total_price: total,
           payment_method: paymentMethod,
           payment_status: paymentMethod === 'cashier' ? 'waiting_at_counter' : 'pending',
@@ -293,20 +303,27 @@ export default function Checkout() {
                   {/* Order Type Selection */}
                   <div className="space-y-3">
                     <label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Tipe Pesanan</label>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-3 sm:gap-4">
                       <button
                         type="button"
                         onClick={() => setOrderType('dine-in')}
-                        className={`py-4 px-6 rounded-2xl border-2 font-bold transition-all flex items-center justify-center gap-2 ${orderType === 'dine-in' ? 'border-primary bg-primary/5 text-primary' : 'border-gray-50 text-gray-400'}`}
+                        className={`py-4 px-3 sm:px-6 rounded-2xl border-2 font-bold transition-all flex items-center justify-center gap-2 text-xs sm:text-sm ${orderType === 'dine-in' ? 'border-primary bg-primary/5 text-primary' : 'border-gray-50 text-gray-400'}`}
                       >
-                         <Coffee size={18} /> Makan di Sini
+                         <Coffee size={18} /> Makan
                       </button>
                       <button
                         type="button"
                         onClick={() => setOrderType('takeaway')}
-                        className={`py-4 px-6 rounded-2xl border-2 font-bold transition-all flex items-center justify-center gap-2 ${orderType === 'takeaway' ? 'border-primary bg-primary/5 text-primary' : 'border-gray-50 text-gray-400'}`}
+                        className={`py-4 px-3 sm:px-6 rounded-2xl border-2 font-bold transition-all flex items-center justify-center gap-2 text-xs sm:text-sm ${orderType === 'takeaway' ? 'border-primary bg-primary/5 text-primary' : 'border-gray-50 text-gray-400'}`}
                       >
-                         <Package size={18} /> Bawa Pulang
+                         <Package size={18} /> Bawa
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setOrderType('delivery')}
+                        className={`py-4 px-3 sm:px-6 rounded-2xl border-2 font-bold transition-all flex items-center justify-center gap-2 text-xs sm:text-sm ${orderType === 'delivery' ? 'border-primary bg-primary/5 text-primary' : 'border-gray-50 text-gray-400'}`}
+                      >
+                         <Truck size={18} /> Antar
                       </button>
                     </div>
                   </div>
@@ -337,8 +354,26 @@ export default function Checkout() {
                             required
                             type="text"
                             value={tableNumber || ''}
+                            onChange={(e) => setTableNumber(e.target.value)}
                             placeholder="Meja No."
                             className="w-full pl-10 pr-6 py-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-primary/20 outline-none transition-all font-black text-primary"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {orderType === 'delivery' && (
+                      <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300 md:col-span-2">
+                        <label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Alamat Pengiriman</label>
+                        <div className="relative">
+                          <MapPin className="absolute left-4 top-4 text-gray-300" size={18} />
+                          <textarea
+                            required
+                            value={address}
+                            onChange={(e) => setAddress(e.target.value)}
+                            placeholder="Detail alamat lengkap (Jl. No. Kec. Kota)"
+                            rows={3}
+                            className="w-full pl-12 pr-6 py-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-primary/20 outline-none transition-all resize-none font-medium"
                           />
                         </div>
                       </div>
