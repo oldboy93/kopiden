@@ -1,15 +1,29 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Coffee, ShoppingBag, LogOut, Banknote } from 'lucide-react';
+import { LayoutDashboard, Coffee, ShoppingBag, LogOut, Banknote, Users } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [hasNewOrders, setHasNewOrders] = useState(false);
 
   useEffect(() => {
+    // Fetch Role
+    const fetchRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        if (profile) setUserRole(profile.role);
+      }
+    };
+    fetchRole();
     // Check initial pending orders
     const checkPending = async () => {
       const { count } = await supabase
@@ -55,16 +69,19 @@ export default function AdminSidebar() {
 
   const menuItems = [
     { href: '/admin/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-    { href: '/admin/menu', label: 'Menu Management', icon: <Coffee size={20} /> },
+    { href: '/admin/menu', label: 'Menu Management', icon: <Coffee size={20} />, adminOnly: true },
     { href: '/admin/orders', label: 'Orders', icon: <ShoppingBag size={20} />, badge: hasNewOrders },
-    { href: '/admin/vouchers', label: 'Vouchers', icon: <Banknote size={20} /> },
+    { href: '/admin/vouchers', label: 'Vouchers', icon: <Banknote size={20} />, adminOnly: true },
+    { href: '/admin/staff', label: 'Staff Management', icon: <Users size={20} />, adminOnly: true },
   ];
+
+  const visibleItems = menuItems.filter(item => !item.adminOnly || userRole === 'admin');
 
   return (
     <aside className="w-full md:w-64 bg-[#1a1a1a] text-white p-4 md:p-8 flex flex-row md:flex-col gap-4 md:gap-12 md:sticky md:top-0 md:h-screen overflow-x-auto md:overflow-y-auto whitespace-nowrap md:whitespace-normal no-scrollbar items-center md:items-start z-50 border-b md:border-b-0 border-white/5">
       <div className="text-xl md:text-2xl font-black text-emerald-500 hidden md:block">Kopiden.</div>
       <nav className="flex flex-row md:flex-col gap-2 md:gap-4 flex-grow w-full">
-        {menuItems.map((item) => {
+        {visibleItems.map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link 

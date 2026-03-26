@@ -21,7 +21,8 @@ import {
   Star,
   X,
   Sparkles,
-  Coffee
+  Coffee,
+  Banknote
 } from 'lucide-react';
 
 declare global {
@@ -57,11 +58,17 @@ export default function Checkout() {
   const [usePoints, setUsePoints] = useState(false);
 
   useEffect(() => {
-    if (contextTableNumber) {
+    if (contextTableNumber && contextTableNumber !== tableNumber) {
       setTableNumber(contextTableNumber);
-      setOrderType('dine-in');
+      setOrderType('dine-in'); // Only force dine-in once on detect
     }
-  }, [contextTableNumber]);
+  }, [contextTableNumber, tableNumber]);
+
+  useEffect(() => {
+    if (orderType === 'delivery' && paymentMethod === 'cashier') {
+      setPaymentMethod('midtrans');
+    }
+  }, [orderType, paymentMethod]);
 
   const tax = subtotal * 0.1;
   const discountAmount = appliedVoucher ? (subtotal * appliedVoucher.discount_percent / 100) : 0;
@@ -99,11 +106,8 @@ export default function Checkout() {
       return;
     }
 
-    if (tableNumber) {
-      setOrderType('dine-in');
-    }
     getUser();
-  }, [router, cart.length, step, tableNumber]);
+  }, [router, cart.length, step]);
 
   const handleApplyVoucher = async () => {
     if (!voucherCode) return;
@@ -394,16 +398,6 @@ export default function Checkout() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Detailed Address</label>
-                    <textarea
-                      required
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      placeholder="Street name, Building number, Floor..."
-                      className="w-full p-6 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-primary/20 outline-none h-32 transition-all resize-none"
-                    ></textarea>
-                  </div>
 
                   <button
                     type="submit"
@@ -442,20 +436,22 @@ export default function Checkout() {
                     {paymentMethod === 'midtrans' && <CheckCircle2 className="text-primary" size={20} />}
                   </div>
 
-                  {/* Cashier */}
-                  <div
-                    onClick={() => setPaymentMethod('cashier')}
-                    className={`p-6 border-2 rounded-[2rem] flex items-center gap-4 cursor-pointer transition-all ${paymentMethod === 'cashier' ? 'border-primary bg-primary/5 shadow-inner' : 'border-gray-50 hover:border-gray-100'}`}
-                  >
-                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${paymentMethod === 'cashier' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-400'}`}>
-                      <Truck size={20} />
+                  {/* Cashier - HIDE FOR DELIVERY */}
+                  {orderType !== 'delivery' && (
+                    <div
+                      onClick={() => setPaymentMethod('cashier')}
+                      className={`p-6 border-2 rounded-[2rem] flex items-center gap-4 cursor-pointer transition-all ${paymentMethod === 'cashier' ? 'border-primary bg-primary/5 shadow-inner' : 'border-gray-50 hover:border-gray-100'}`}
+                    >
+                      <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${paymentMethod === 'cashier' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-400'}`}>
+                        <Banknote size={20} />
+                      </div>
+                      <div className="flex-1">
+                        <span className="font-bold block">Bayar di Kasir</span>
+                        <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Tunai / QRIS Statis di Counter</span>
+                      </div>
+                      {paymentMethod === 'cashier' && <CheckCircle2 className="text-primary" size={20} />}
                     </div>
-                    <div className="flex-1">
-                      <span className="font-bold block">Bayar di Kasir</span>
-                      <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Tunai / QRIS Statis di Counter</span>
-                    </div>
-                    {paymentMethod === 'cashier' && <CheckCircle2 className="text-primary" size={20} />}
-                  </div>
+                  )}
                 </div>
 
                 <div className="pt-10 flex flex-col gap-4">

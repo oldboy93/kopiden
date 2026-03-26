@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Check, X, Eye, Loader2, Banknote, MapPin, RefreshCw, Truck, Coffee, AlertCircle, Info } from 'lucide-react';
+import { Check, X, Eye, Loader2, Banknote, MapPin, RefreshCw, Truck, Coffee, Package, Printer, ShieldCheck, AlertCircle, Info } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import AdminSidebar from '@/components/AdminSidebar';
 
@@ -12,6 +12,8 @@ export default function AdminOrders() {
   const [loading, setLoading] = useState(true);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'cashier' | 'barista'>('all');
+  const [userRole, setUserRole] = useState<'admin' | 'barista' | 'cashier' | 'customer' | null>(null);
+  const [confirming, setConfirming] = useState<{ id: string, action: string } | null>(null);
   const [syncMessage, setSyncMessage] = useState<{ type: 'error' | 'success' | 'info', text: string } | null>(null);
   const [toastMsg, setToastMsg] = useState<{ title: string, desc: string } | null>(null);
   const router = useRouter();
@@ -36,10 +38,8 @@ export default function AdminOrders() {
       if (!AudioContext) return;
 
       const context = audioContext || new AudioContext();
-      if (!audioContext) setAudioContext(context);
-
-      if (context.state === 'suspended') {
-        context.resume();
+      if (!audioContext) {
+        setAudioContext(context);
       }
 
       const oscillator = context.createOscillator();
@@ -109,6 +109,23 @@ export default function AdminOrders() {
         router.push('/admin/login');
         return;
       }
+
+      // Fetch Profile Role
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile || profile.role === 'customer') {
+        router.push('/menu');
+        return;
+      }
+
+      setUserRole(profile.role as any);
+      if (profile.role === 'barista') setActiveTab('barista');
+      else if (profile.role === 'cashier') setActiveTab('cashier');
+      else setActiveTab('all');
 
       const didAutoConfirm = await checkAutoConfirm();
 
@@ -286,34 +303,119 @@ export default function AdminOrders() {
     }
   };
 
+  const handlePrint = (order: any) => {
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
+    if (!printWindow) return;
+
+    const receiptHtml = `
+      <html>
+        <head>
+          <title>Struk Kopiden - ${order.id}</title>
+          <style>
+            @font-face {
+              font-family: 'Inter';
+              src: url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+            }
+            body { 
+              font-family: 'Courier New', Courier, monospace; 
+              width: 80mm; 
+              margin: 0 auto; 
+              padding: 10px;
+              color: #000;
+            }
+            .header { text-align: center; margin-bottom: 20px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
+            .header h1 { margin: 0; font-size: 24px; font-weight: 900; letter-spacing: -1px; }
+            .info { font-size: 12px; margin-bottom: 15px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
+            .item { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; }
+            .totals { margin-top: 15px; border-top: 1px dashed #000; padding-top: 10px; font-weight: bold; }
+            .footer { text-align: center; margin-top: 25px; font-size: 11px; font-style: italic; }
+            .qr-placeholder { margin-bottom: 10px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>KOPIDEN</h1>
+            <div style="font-size: 10px;">Modern Coffee Experience</div>
+          </div>
+          <div class="info">
+            <div>Order: #${order.id}</div>
+            <div>Date: ${new Date().toLocaleString('id-ID')}</div>
+            <div>Customer: ${order.customer}</div>
+            <div>Type: ${order.table === 'Delivery' ? 'DELIVERY' : (order.table === 'Takeaway' ? 'TAKEAWAY' : 'DINE-IN (' + order.table + ')')}</div>
+            ${order.address ? `<div style="margin-top:5px; font-style:italic;">Addr: ${order.address}</div>` : ''}
+          </div>
+          <div class="items">
+            ${order.items.split(', ').map((item: string) => {
+      const parts = item.match(/(\\d+)x (.+)/);
+      if (parts) {
+        return `<div class="item"><span>${parts[1]}x ${parts[2]}</span></div>`;
+      }
+      return `<div class="item"><span>${item}</span></div>`;
+    }).join('')}
+          </div>
+          <div class="totals">
+            <div class="item"><span>TOTAL</span><span>${order.total}</span></div>
+          </div>
+          <div class="footer">
+            <div>Terima Kasih Atas Kunjungan Anda!</div>
+            <div style="margin-top:5px;">Follow us @kopiden.id</div>
+          </div>
+          <script>
+            window.onload = function() { window.print(); window.close(); }
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(receiptHtml);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.onafterprint = () => {
+      printWindow.close();
+    };
+  };
+
   return (
-    <div className="min-h-screen bg-[#f8f9fa] flex flex-col md:flex-row">
+    <div className="min-h-screen bg-[#f8f9fa] flex flex-col md:flex-row text-gray-900">
       <AdminSidebar />
 
       <main className="flex-grow p-4 sm:p-8 md:p-12 overflow-x-hidden">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 md:mb-12">
-          <h1 className="text-2xl sm:text-3xl font-black">Live Orders</h1>
-
-          <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 self-start">
-            <button
-              onClick={() => setActiveTab('all')}
-              className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'all' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-gray-600'}`}
-            >
-              Semua
-            </button>
-            <button
-              onClick={() => setActiveTab('cashier')}
-              className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'cashier' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'text-gray-400 hover:text-gray-600'}`}
-            >
-              Kasir
-            </button>
-            <button
-              onClick={() => setActiveTab('barista')}
-              className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'barista' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'text-gray-400 hover:text-gray-600'}`}
-            >
-              Barista
-            </button>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 md:mb-12">
+          <div className="flex flex-col">
+            <h1 className="text-2xl sm:text-3xl font-black flex items-center gap-3">
+              {activeTab === 'all' && <><ShieldCheck size={28} className="text-primary" /> Dashboard Owner</>}
+              {activeTab === 'cashier' && <><Banknote size={28} className="text-amber-500" /> Dashboard Kasir</>}
+              {activeTab === 'barista' && <><Coffee size={28} className="text-orange-500" /> Dashboard Barista</>}
+            </h1>
+            <p className="text-gray-400 text-xs font-medium mt-1 uppercase tracking-widest leading-relaxed">
+              {activeTab === 'all' ? 'Akses Penuh: Monitoring & Management' : 
+               activeTab === 'cashier' ? 'Fokus: Pembayaran & Konfirmasi Tunai' : 
+               'Fokus: Produksi & Status Pesanan'}
+            </p>
           </div>
+
+          {userRole === 'admin' && (
+            <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 self-start overflow-x-auto max-w-full no-scrollbar">
+              <button
+                onClick={() => setActiveTab('all')}
+                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'all' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                <ShieldCheck size={14} /> Admin
+              </button>
+              <button
+                onClick={() => setActiveTab('cashier')}
+                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'cashier' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                <Banknote size={14} /> Kasir
+              </button>
+              <button
+                onClick={() => setActiveTab('barista')}
+                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'barista' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                <Coffee size={14} /> Barista
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:gap-6">
@@ -343,24 +445,37 @@ export default function AdminOrders() {
                 <div className="flex items-center justify-between sm:justify-start gap-3 mb-1">
                   <h3 className="text-lg sm:text-xl font-bold truncate max-w-[150px] sm:max-w-none">{order.customer}</h3>
                   <span className="text-[10px] sm:text-xs text-gray-400 font-medium">• {order.time}</span>
-                  {order.table && (
-                    <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-black rounded-lg">
-                      {order.table === 'Delivery' ? 'DIGOS' : `MEJA ${order.table}`}
+                  
+                  {/* Stale Warning (>2h) */}
+                  {order.status !== 'completed' && order.status !== 'cancelled' && (new Date().getTime() - new Date(order.createdAt).getTime()) > 7200000 && (
+                    <span className="px-2 py-0.5 bg-red-50 text-red-500 text-[9px] font-bold rounded-lg animate-pulse border border-red-100">
+                      STALE &gt; 2H
                     </span>
                   )}
-                  {order.address && (
+                  {order.table === 'Delivery' ? (
                     <span className="px-2 py-0.5 bg-blue-50 text-blue-500 text-[10px] font-black rounded-lg flex items-center gap-1">
-                      <MapPin size={10} /> DELIVERY
+                      <MapPin size={10} /> DELIVERY (DIGOS)
                     </span>
-                  )}
+                  ) : order.table === 'Takeaway' ? (
+                    <span className="px-2 py-0.5 bg-amber-50 text-amber-500 text-[10px] font-black rounded-lg flex items-center gap-1">
+                      <Package size={10} /> TAKEAWAY
+                    </span>
+                  ) : order.table ? (
+                    <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-black rounded-lg">
+                      MEJA {order.table}
+                    </span>
+                  ) : null}
                 </div>
                 <p className="text-gray-500 text-xs sm:text-sm font-medium truncate max-w-full italic mb-1">
                   {order.items}
                 </p>
-                {order.address && (
-                  <div className="flex items-start gap-1.5 text-[11px] text-gray-400 bg-gray-50 p-2 rounded-xl border border-gray-100 mt-2">
-                    <MapPin className="mt-0.5 flex-shrink-0" size={12} />
-                    <span className="line-clamp-2">{order.address}</span>
+                {order.address && order.address.trim() !== '' && (
+                  <div className="flex items-start gap-2 text-xs text-blue-600 bg-blue-50/50 p-3 rounded-2xl border border-blue-100 mt-3 shadow-sm">
+                    <MapPin className="mt-0.5 flex-shrink-0" size={14} />
+                    <div className="flex flex-col">
+                       <span className="font-black uppercase tracking-widest text-[8px] mb-0.5">Alamat Pengiriman:</span>
+                       <span className="font-medium leading-relaxed">{order.address}</span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -390,69 +505,126 @@ export default function AdminOrders() {
                 <p className="text-2xl font-black">{order.total}</p>
               </div>
               <div className="flex items-center gap-3 w-full sm:w-auto mt-4 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-t-0 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Print Receipt - ALWAYS Visible */}
                 <button
-                  onClick={() => handleSyncStatus(order.rawId)}
-                  disabled={syncingId === order.rawId}
-                  className="flex-grow sm:flex-none h-11 w-full sm:w-12 bg-white border border-gray-100 text-gray-400 rounded-xl flex items-center justify-center hover:text-blue-500 hover:border-blue-100 transition-all disabled:opacity-50"
-                  title="Sync Payment Status"
+                  onClick={() => handlePrint(order)}
+                  className="flex-grow sm:flex-none h-11 w-full sm:w-12 bg-gray-50 text-gray-400 rounded-xl flex items-center justify-center hover:text-primary hover:bg-primary/5 transition-all"
+                  title="Print Receipt"
                 >
-                  <RefreshCw size={18} className={`sm:w-5 sm:h-5 ${syncingId === order.rawId ? 'animate-spin' : ''}`} />
+                  <Printer size={18} className="sm:w-5 sm:h-5" />
                 </button>
 
-                {/* Brewing Action */}
-                <button
-                  disabled={(order.status !== 'pending' && order.status !== 'processing') || order.paymentStatus !== 'paid'}
-                  onClick={() => handleUpdateStatus(order.rawId, 'brewing')}
-                  className={`flex-grow sm:flex-none h-11 w-full sm:w-12 rounded-xl flex items-center justify-center transition-all ${order.status === 'brewing' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-white border border-gray-100 text-gray-400 hover:text-orange-500 hover:border-orange-100'
-                    }`}
-                  title="Start Brewing"
-                >
-                  <Coffee size={18} className="sm:w-5 sm:h-5" />
-                </button>
+                {/* Sync Payment - Cashier Only */}
+                {(activeTab === 'all' || activeTab === 'cashier') && (
+                  <button
+                    onClick={() => handleSyncStatus(order.rawId)}
+                    disabled={syncingId === order.rawId}
+                    className="flex-grow sm:flex-none h-11 w-full sm:w-12 bg-white border border-gray-100 text-gray-400 rounded-xl flex items-center justify-center hover:text-blue-500 hover:border-blue-100 transition-all disabled:opacity-50"
+                    title="Sync Payment Status"
+                  >
+                    <RefreshCw size={18} className={`sm:w-5 sm:h-5 ${syncingId === order.rawId ? 'animate-spin' : ''}`} />
+                  </button>
+                )}
 
-                {/* Out for Delivery Action */}
-                <button
-                  disabled={order.status !== 'brewing' && order.status !== 'processing' && order.status !== 'pending'}
-                  onClick={() => handleUpdateStatus(order.rawId, 'on_the_way')}
-                  className={`flex-grow sm:flex-none h-11 w-full sm:w-12 rounded-xl flex items-center justify-center transition-all ${order.status === 'on_the_way' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white border border-gray-100 text-gray-400 hover:text-blue-500 hover:border-blue-100'
-                    }`}
-                  title="Out for Delivery"
-                >
-                  <Truck size={18} className="sm:w-5 sm:h-5" />
-                </button>
+                {/* Brewing/Otw - Barista/Delivery Only */}
+                {(activeTab === 'all' || activeTab === 'barista') && (
+                  <>
+                    <button
+                      disabled={(order.status !== 'pending' && order.status !== 'processing') || order.paymentStatus !== 'paid'}
+                      onClick={() => handleUpdateStatus(order.rawId, 'brewing')}
+                      className={`flex-grow sm:flex-none h-11 w-full sm:w-12 rounded-xl flex items-center justify-center transition-all ${order.status === 'brewing' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-white border border-gray-100 text-gray-400 hover:text-orange-500 hover:border-orange-100'
+                        }`}
+                      title="Start Brewing"
+                    >
+                      <Coffee size={18} className="sm:w-5 sm:h-5" />
+                    </button>
 
-                <button
-                  disabled={order.status === 'completed' || order.status === 'cancelled'}
-                  onClick={() => handleUpdateStatus(order.rawId, 'completed')}
-                  className="flex-grow sm:flex-none h-11 w-full sm:w-12 bg-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-500/20 flex items-center justify-center hover:scale-105 sm:hover:scale-110 transition-transform disabled:opacity-30 disabled:hover:scale-100"
-                  title="Complete Order (Manual)"
-                >
-                  <Check size={18} className="sm:w-5 sm:h-5" />
-                </button>
-                <button
-                  disabled={order.paymentStatus === 'paid'}
-                  onClick={async () => {
-                    await handleUpdatePaymentStatus(order.rawId, 'paid');
-                    if (order.status === 'pending') {
-                      await handleUpdateStatus(order.rawId, 'processing');
-                    }
-                  }}
-                  className={`flex-grow sm:flex-none h-11 w-full sm:w-12 rounded-xl flex items-center justify-center transition-all ${order.paymentStatus === 'waiting_at_counter'
-                      ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20 animate-bounce'
+                    <button
+                      disabled={order.status !== 'brewing' && order.status !== 'processing' && order.status !== 'pending'}
+                      onClick={() => handleUpdateStatus(order.rawId, 'on_the_way')}
+                      className={`flex-grow sm:flex-none h-11 w-full sm:w-12 rounded-xl flex items-center justify-center transition-all ${order.status === 'on_the_way' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white border border-gray-100 text-gray-400 hover:text-blue-500 hover:border-blue-100'
+                        }`}
+                      title="Out for Delivery"
+                    >
+                      <Truck size={18} className="sm:w-5 sm:h-5" />
+                    </button>
+                  </>
+                )}
+
+                {/* Financial Actions - Cashier Only */}
+                {(activeTab === 'all' || activeTab === 'cashier') && (
+                  <button
+                    disabled={order.paymentStatus === 'paid'}
+                    onClick={async () => {
+                      if (confirming?.id === order.rawId && confirming?.action === 'pay') {
+                        await handleUpdatePaymentStatus(order.rawId, 'paid');
+                        if (order.status === 'pending') {
+                          await handleUpdateStatus(order.rawId, 'processing');
+                        }
+                        setConfirming(null);
+                      } else {
+                        setConfirming({ id: order.rawId, action: 'pay' });
+                        setTimeout(() => setConfirming(null), 3000);
+                      }
+                    }}
+                    className={`flex-grow sm:flex-none h-11 w-full sm:w-auto sm:min-w-[44px] px-2 rounded-xl flex items-center justify-center transition-all ${order.paymentStatus === 'waiting_at_counter'
+                      ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20'
                       : 'bg-white border border-gray-100 text-orange-400 hover:text-emerald-500 hover:border-emerald-100'
-                    }`}
-                  title={order.paymentStatus === 'waiting_at_counter' ? "Konfirmasi Bayar Tunai" : "Mark as Paid"}
-                >
-                  <Banknote size={18} className="sm:w-5 sm:h-5" />
-                </button>
-                <button
-                  disabled={order.status === 'completed' || order.status === 'cancelled'}
-                  onClick={() => handleUpdateStatus(order.rawId, 'cancelled')}
-                  className="flex-grow sm:flex-none h-11 w-full sm:w-12 bg-white border border-gray-100 text-gray-400 rounded-xl flex items-center justify-center hover:text-red-500 hover:border-red-100 transition-all disabled:opacity-30"
-                  title="Cancel Order"
-                >
-                  <X size={18} className="sm:w-5 sm:h-5" />
-                </button>
+                      } ${confirming?.id === order.rawId && confirming?.action === 'pay' ? 'bg-red-500 border-red-500 text-white ring-4 ring-red-100' : ''}`}
+                  >
+                    {confirming?.id === order.rawId && confirming?.action === 'pay' ? (
+                      <span className="text-[10px] font-black px-2">CONFIRM?</span>
+                    ) : (
+                      <Banknote size={18} className="sm:w-5 sm:h-5" />
+                    )}
+                  </button>
+                )}
+
+                {/* Conclusion Actions - Barista/All - HIDDEN FOR STAFF UNLESS STALE */}
+                {(activeTab === 'all' || ((activeTab === 'barista' || activeTab === 'cashier') && (new Date().getTime() - new Date(order.createdAt).getTime()) > 7200000)) && (
+                  <button
+                    disabled={order.status === 'completed' || order.status === 'cancelled'}
+                    onClick={() => {
+                      if (confirming?.id === order.rawId && confirming?.action === 'complete') {
+                        handleUpdateStatus(order.rawId, 'completed');
+                        setConfirming(null);
+                      } else {
+                        setConfirming({ id: order.rawId, action: 'complete' });
+                        setTimeout(() => setConfirming(null), 3000);
+                      }
+                    }}
+                    className={`flex-grow sm:flex-none h-11 w-full sm:w-auto sm:min-w-[44px] px-2 rounded-xl flex items-center justify-center transition-all ${confirming?.id === order.rawId && confirming?.action === 'complete' ? 'bg-emerald-600 text-white ring-4 ring-emerald-100' : 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'}`}
+                  >
+                    {confirming?.id === order.rawId && confirming?.action === 'complete' ? (
+                      <span className="text-[10px] font-black px-2">LUNAS?</span>
+                    ) : (
+                      <Check size={18} className="sm:w-5 sm:h-5" />
+                    )}
+                  </button>
+                )}
+
+                {/* Cancel - All (With High Discipline) - HIDDEN FOR STAFF UNLESS STALE */}
+                {(activeTab === 'all' || ((activeTab === 'barista' || activeTab === 'cashier') && (new Date().getTime() - new Date(order.createdAt).getTime()) > 7200000)) && (
+                  <button
+                    disabled={order.status === 'completed' || order.status === 'cancelled'}
+                    onClick={() => {
+                      if (confirming?.id === order.rawId && confirming?.action === 'cancel') {
+                        handleUpdateStatus(order.rawId, 'cancelled');
+                        setConfirming(null);
+                      } else {
+                        setConfirming({ id: order.rawId, action: 'cancel' });
+                        setTimeout(() => setConfirming(null), 3000);
+                      }
+                    }}
+                    className={`flex-grow sm:flex-none h-11 w-full sm:w-auto sm:min-w-[44px] px-2 rounded-xl flex items-center justify-center transition-all border border-gray-100 text-gray-400 hover:text-red-500 hover:border-red-100 ${confirming?.id === order.rawId && confirming?.action === 'cancel' ? 'bg-red-600 border-red-600 text-white ring-4 ring-red-100 animate-pulse' : ''}`}
+                  >
+                    {confirming?.id === order.rawId && confirming?.action === 'cancel' ? (
+                      <span className="text-[10px] font-black px-2">BATAL?</span>
+                    ) : (
+                      <X size={18} className="sm:w-5 sm:h-5" />
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           ))}
