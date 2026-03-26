@@ -30,19 +30,20 @@ export default function AdminLogin() {
     }
 
     if (authData?.user) {
-      // Check if user is an admin
+      // Check if user has any staff role
       const { data: profile } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', authData.user.id)
         .single();
 
-      if (profile?.role === 'admin') {
-        router.push('/admin/dashboard');
+      const staffRoles = ['admin', 'barista', 'cashier'];
+      if (profile?.role && staffRoles.includes(profile.role)) {
+        router.push('/admin/orders'); // All staff go to orders page
       } else {
-        // Not an admin, sign them out and show error
+        // Not a staff member, sign them out and show error
         await supabase.auth.signOut();
-        setError('Access denied. You do not have administrator privileges.');
+        setError('Akses ditolak. Akun Anda tidak memiliki akses staff. Hubungi Owner untuk mendapatkan akses.');
         setLoading(false);
       }
     }

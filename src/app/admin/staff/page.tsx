@@ -21,10 +21,16 @@ export default function StaffManagement() {
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [saving, setSaving] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const MAX_STAFF = 3; // Pro Package Limit
 
   useEffect(() => {
-    fetchStaff();
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setCurrentUserId(user.id);
+      fetchStaff();
+    };
+    init();
   }, []);
 
   const fetchStaff = async () => {
@@ -62,6 +68,12 @@ export default function StaffManagement() {
   };
 
   const updateRole = async (userId: string, newRole: string) => {
+    // Prevent self-demotion
+    if (userId === currentUserId) {
+      alert('⚠️ Tidak bisa mengubah role akun Anda sendiri. Minta Owner lain untuk mengubahnya.');
+      return;
+    }
+
     // Only limit if PROMOTING from customer to staff
     const isCurrentlyCustomer = !staff.find(s => s.id === userId); // If not in staff list, it's a search result (customer)
     if (isCurrentlyCustomer && newRole !== 'customer' && activeStaffCount >= MAX_STAFF) {
