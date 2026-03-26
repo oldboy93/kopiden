@@ -19,19 +19,22 @@ interface CartContextType {
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, delta: number) => void;
   clearCart: () => void;
+  setTableNumber: (table: string | null) => void;
   totalItems: number;
   subtotal: number;
+  tableNumber: string | null;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [tableNumber, setTableNumber] = useState<string | null>(null);
 
-  // Load cart from localStorage and Sync from Supabase on mount
+  // Load cart and table number from localStorage on mount
   useEffect(() => {
-    async function loadCart() {
-      // 1. Load from localStorage first (for speed)
+    async function loadInitialData() {
+      // 1. Load cart
       const savedCart = localStorage.getItem('kopiden_cart');
       if (savedCart) {
         try {
@@ -39,6 +42,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         } catch (e) {
           console.error('Failed to parse local cart', e);
         }
+      }
+
+      // 2. Load table number
+      const savedTable = localStorage.getItem('kopiden_table');
+      if (savedTable) {
+        setTableNumber(savedTable);
       }
 
       // 2. Sync from Supabase if logged in
@@ -57,12 +66,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
     }
     
-    loadCart();
+    loadInitialData();
   }, []);
 
-  // Save cart to localStorage AND Supabase on change
+  // Save cart and table number to localStorage on change
   useEffect(() => {
     localStorage.setItem('kopiden_cart', JSON.stringify(cart));
+    if (tableNumber) {
+      localStorage.setItem('kopiden_table', tableNumber);
+    } else {
+      localStorage.removeItem('kopiden_table');
+    }
     
     const syncToDB = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -119,8 +133,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       removeFromCart, 
       updateQuantity, 
       clearCart, 
+      setTableNumber,
       totalItems, 
-      subtotal 
+      subtotal,
+      tableNumber
     }}>
       {children}
     </CartContext.Provider>

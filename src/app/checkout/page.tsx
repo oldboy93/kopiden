@@ -6,12 +6,12 @@ import Link from 'next/link';
 import Script from 'next/script';
 import { supabase } from '@/lib/supabase';
 import { useCart } from '@/context/CartContext';
-import { 
-  CreditCard, 
-  Truck, 
-  ShieldCheck, 
-  CheckCircle2, 
-  Loader2, 
+import {
+  CreditCard,
+  Truck,
+  ShieldCheck,
+  CheckCircle2,
+  Loader2,
   ArrowLeft,
   MapPin,
   Mail,
@@ -20,7 +20,8 @@ import {
   Ticket,
   Star,
   X,
-  Sparkles
+  Sparkles,
+  Coffee
 } from 'lucide-react';
 
 declare global {
@@ -30,11 +31,13 @@ declare global {
 }
 
 export default function Checkout() {
-  const { cart, subtotal, clearCart } = useCart();
+  const { cart, subtotal, clearCart, tableNumber } = useCart();
   const [step, setStep] = useState(1); // 1: Info, 2: Payment, 3: Success
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'midtrans' | 'cashier' | 'manual'>('midtrans');
+  const [orderType, setOrderType] = useState<'dine-in' | 'takeaway'>(tableNumber ? 'dine-in' : 'takeaway');
 
   // Form State
   const [fullName, setFullName] = useState('');
@@ -46,7 +49,7 @@ export default function Checkout() {
   const [appliedVoucher, setAppliedVoucher] = useState<any>(null);
   const [voucherError, setVoucherError] = useState('');
   const [checkingVoucher, setCheckingVoucher] = useState(false);
-  
+
   // Points State
   const [availablePoints, setAvailablePoints] = useState(0);
   const [usePoints, setUsePoints] = useState(false);
@@ -62,7 +65,7 @@ export default function Checkout() {
     async function getUser() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        router.push('/login?redirect=/checkout');
+        // Guest mode - don't redirect
         return;
       }
       setUser(user);
@@ -73,28 +76,31 @@ export default function Checkout() {
         .select('*')
         .eq('id', user.id)
         .single();
-      
+
       if (profile) {
         setFullName(profile.full_name || '');
         setEmail(profile.email || '');
-        setAddress(profile.address || '');
+        setAddress(profile.address || ''); // Only for delivery, but we keep it
         setAvailablePoints(profile.loyalty_points || 0);
       }
     }
-    
+
     if (cart.length === 0 && step !== 3) {
       router.push('/menu');
       return;
     }
 
+    if (tableNumber) {
+      setOrderType('dine-in');
+    }
     getUser();
-  }, [router, cart.length, step]);
+  }, [router, cart.length, step, tableNumber]);
 
   const handleApplyVoucher = async () => {
     if (!voucherCode) return;
     setCheckingVoucher(true);
     setVoucherError('');
-    
+
     try {
       const { data, error } = await supabase
         .from('vouchers')
@@ -130,9 +136,12 @@ export default function Checkout() {
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
-          user_id: user.id,
+          user_id: user?.id || null,
+          customer_name_guest: !user ? fullName : null,
+          table_number: orderType === 'dine-in' ? tableNumber : 'Takeaway',
           total_price: total,
-          payment_status: 'pending',
+          payment_method: paymentMethod,
+          payment_status: paymentMethod === 'cashier' ? 'waiting_at_counter' : 'pending',
           order_status: 'pending',
           points_used: usePoints ? availablePoints : 0
         })
@@ -156,25 +165,23 @@ export default function Checkout() {
 
       if (itemsError) throw itemsError;
 
-    // 2.5 Update Order with Discount if applicable
-    if (appliedVoucher) {
-      await supabase
-        .from('orders')
-        .update({ 
-          voucher_code: appliedVoucher.code,
-          discount_amount: discountAmount 
-        })
-        .eq('id', order.id);
-    }
+      // 3. Handle Payment Method
+      if (paymentMethod === 'cashier') {
+        // Just clear cart and show success
+        setOrderId(order.id);
+        setStep(3);
+        clearCart();
+        return;
+      }
 
-      // 3. Get Snap Token from API
+      // 4. Get Snap Token from API (for Midtrans/Manual)
       const response = await fetch('/api/payment/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           order_id: order.id,
-          gross_amount: total, // This 'total' already includes pointsDiscount from line 51 logic
-          discount_amount: discountAmount + pointsDiscount, // Log total discount for record
+          gross_amount: total,
+          discount_amount: discountAmount + pointsDiscount,
           voucher_code: appliedVoucher?.code,
           customer_details: {
             first_name: fullName,
@@ -194,53 +201,38 @@ export default function Checkout() {
       // Save token and actual midtrans order id
       await supabase
         .from('orders')
-        .update({ 
+        .update({
           midtrans_token: token,
-          midtrans_order_id: midtransOrderId 
+          midtrans_order_id: midtransOrderId
         })
         .eq('id', order.id);
 
-      // 4. Open Midtrans Snap
+      // 5. Open Midtrans Snap
       window.snap.pay(token, {
         onSuccess: async (result: any) => {
-          console.log('Payment success:', result);
           await supabase
             .from('orders')
             .update({ payment_status: 'paid', order_status: 'processing' })
             .eq('id', order.id);
 
-          // Deduct points from profile if used
-          if (usePoints) {
+          if (usePoints && user) {
             await supabase
               .from('profiles')
-              .update({ loyalty_points: availablePoints - pointsUsedValue }) // Wait, pointsUsedValue needs to be defined
+              .update({ loyalty_points: availablePoints - pointsUsedValue })
               .eq('id', user.id);
           }
           setOrderId(order.id);
           setStep(3);
         },
         onPending: async (result: any) => {
-          console.log('Payment pending:', result);
-          
-          await supabase
-            .from('orders')
-            .update({ payment_status: 'pending', order_status: 'pending' })
-            .eq('id', order.id);
-
           setOrderId(order.id);
           setStep(3);
         },
         onError: (result: any) => {
-          console.error('Payment error:', result);
           alert('Payment failed. Please try again.');
-        },
-        onClose: () => {
-          console.log('Customer closed the popup without finishing the payment');
         }
       });
-      
-      // CRITICAL: Clear cart immediately for mobile compatibility 
-      // (Redirects to payment apps often break browser callbacks)
+
       clearCart();
     } catch (error: any) {
       console.error('Checkout error:', error);
@@ -252,27 +244,27 @@ export default function Checkout() {
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
-      <Script 
-        src="https://app.sandbox.midtrans.com/snap/snap.js" 
+      <Script
+        src="https://app.sandbox.midtrans.com/snap/snap.js"
         data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
       />
-      
+
       <div className="container mx-auto px-8 py-12 max-w-4xl">
         <header className="text-center mb-16">
           <Link href="/" className="text-4xl font-black text-primary mb-8 block tracking-tighter hover:scale-105 transition-transform">Kopiden</Link>
           <div className="flex items-center justify-center gap-6 max-w-md mx-auto">
-             <div className="flex flex-col items-center gap-2 flex-1">
-               <div className={`h-2 w-full rounded-full transition-all duration-500 ${step >= 1 ? 'bg-primary' : 'bg-gray-200'}`}></div>
-               <span className={`text-[10px] font-black uppercase tracking-widest ${step >= 1 ? 'text-primary' : 'text-gray-300'}`}>Info</span>
-             </div>
-             <div className="flex flex-col items-center gap-2 flex-1">
-               <div className={`h-2 w-full rounded-full transition-all duration-500 ${step >= 2 ? 'bg-primary' : 'bg-gray-200'}`}></div>
-               <span className={`text-[10px] font-black uppercase tracking-widest ${step >= 2 ? 'text-primary' : 'text-gray-300'}`}>Payment</span>
-             </div>
-             <div className="flex flex-col items-center gap-2 flex-1">
-               <div className={`h-2 w-full rounded-full transition-all duration-500 ${step >= 3 ? 'bg-primary' : 'bg-gray-200'}`}></div>
-               <span className={`text-[10px] font-black uppercase tracking-widest ${step >= 3 ? 'text-primary' : 'text-gray-300'}`}>Done</span>
-             </div>
+            <div className="flex flex-col items-center gap-2 flex-1">
+              <div className={`h-2 w-full rounded-full transition-all duration-500 ${step >= 1 ? 'bg-primary' : 'bg-gray-200'}`}></div>
+              <span className={`text-[10px] font-black uppercase tracking-widest ${step >= 1 ? 'text-primary' : 'text-gray-300'}`}>Info</span>
+            </div>
+            <div className="flex flex-col items-center gap-2 flex-1">
+              <div className={`h-2 w-full rounded-full transition-all duration-500 ${step >= 2 ? 'bg-primary' : 'bg-gray-200'}`}></div>
+              <span className={`text-[10px] font-black uppercase tracking-widest ${step >= 2 ? 'text-primary' : 'text-gray-300'}`}>Payment</span>
+            </div>
+            <div className="flex flex-col items-center gap-2 flex-1">
+              <div className={`h-2 w-full rounded-full transition-all duration-500 ${step >= 3 ? 'bg-primary' : 'bg-gray-200'}`}></div>
+              <span className={`text-[10px] font-black uppercase tracking-widest ${step >= 3 ? 'text-primary' : 'text-gray-300'}`}>Done</span>
+            </div>
           </div>
         </header>
 
@@ -282,55 +274,103 @@ export default function Checkout() {
             {step === 1 && (
               <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-gray-50 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="flex items-center gap-4 mb-2">
-                   <div className="h-12 w-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center">
-                     <MapPin size={24} />
-                   </div>
-                   <h2 className="text-3xl font-black">Shipping</h2>
+                  <div className="h-12 w-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center">
+                    <Package size={24} />
+                  </div>
+                  <h2 className="text-3xl font-black">Order Info</h2>
                 </div>
-                
+
+                {!user && (
+                  <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex items-center gap-3">
+                    <Sparkles className="text-amber-500" size={20} />
+                    <p className="text-xs font-bold text-amber-700">
+                      Sudah punya akun? <Link href="/login?redirect=/checkout" className="underline underline-offset-4 decoration-2">Login</Link> untuk kumpulkan poin & gunakan voucher.
+                    </p>
+                  </div>
+                )}
+
                 <form onSubmit={handleCreateOrder} className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Recipient Name</label>
-                    <div className="relative">
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                      <input 
-                        required
-                        type="text" 
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        placeholder="e.g. John Doe" 
-                        className="w-full pl-12 pr-6 py-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-primary/20 outline-none transition-all" 
-                      />
+                  {/* Order Type Selection */}
+                  <div className="space-y-3">
+                    <label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Tipe Pesanan</label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <button
+                        type="button"
+                        onClick={() => setOrderType('dine-in')}
+                        className={`py-4 px-6 rounded-2xl border-2 font-bold transition-all flex items-center justify-center gap-2 ${orderType === 'dine-in' ? 'border-primary bg-primary/5 text-primary' : 'border-gray-50 text-gray-400'}`}
+                      >
+                         <Coffee size={18} /> Makan di Sini
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setOrderType('takeaway')}
+                        className={`py-4 px-6 rounded-2xl border-2 font-bold transition-all flex items-center justify-center gap-2 ${orderType === 'takeaway' ? 'border-primary bg-primary/5 text-primary' : 'border-gray-50 text-gray-400'}`}
+                      >
+                         <Package size={18} /> Bawa Pulang
+                      </button>
                     </div>
                   </div>
 
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Nama Pemesan</label>
+                      <div className="relative">
+                        <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                        <input
+                          required
+                          type="text"
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                          placeholder="e.g. John Doe"
+                          className="w-full pl-12 pr-6 py-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    {orderType === 'dine-in' && (
+                      <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Nomor Meja</label>
+                        <div className="relative">
+                          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 font-bold">#</div>
+                          <input
+                            readOnly={!!tableNumber}
+                            required
+                            type="text"
+                            value={tableNumber || ''}
+                            placeholder="Meja No."
+                            className="w-full pl-10 pr-6 py-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-primary/20 outline-none transition-all font-black text-primary"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="space-y-2">
-                    <label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Email for Receipt</label>
+                    <label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Email (Opsional - untuk struk)</label>
                     <div className="relative">
                       <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                      <input 
-                        required
-                        type="email" 
+                      <input
+                        type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="you@example.com" 
-                        className="w-full pl-12 pr-6 py-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-primary/20 outline-none transition-all" 
+                        placeholder="you@email.com"
+                        className="w-full pl-12 pr-6 py-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Detailed Address</label>
-                    <textarea 
+                    <textarea
                       required
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
-                      placeholder="Street name, Building number, Floor..." 
+                      placeholder="Street name, Building number, Floor..."
                       className="w-full p-6 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-primary/20 outline-none h-32 transition-all resize-none"
                     ></textarea>
                   </div>
 
-                  <button 
+                  <button
                     type="submit"
                     className="w-full bg-primary text-white py-5 rounded-full font-bold text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
                   >
@@ -343,37 +383,56 @@ export default function Checkout() {
             {step === 2 && (
               <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-gray-50 space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
                 <div className="flex items-center gap-4 mb-2">
-                   <div className="h-12 w-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center">
-                     <CreditCard size={24} />
-                   </div>
-                   <h2 className="text-3xl font-black">Payment</h2>
+                  <div className="h-12 w-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center">
+                    <CreditCard size={24} />
+                  </div>
+                  <h2 className="text-3xl font-black">Payment</h2>
                 </div>
-                
-                <p className="text-gray-400 font-medium">Your transaction is encrypted and secured by Midtrans Snap. We don't store your credit card details.</p>
-                
+
+                <p className="text-gray-400 font-medium">Pilih metode pembayaran yang tersedia.</p>
+
                 <div className="space-y-4">
-                  <div className="p-6 border-2 border-primary bg-primary/5 rounded-[2rem] flex items-center gap-4 group">
-                    <div className="h-10 w-10 bg-primary text-white rounded-xl flex items-center justify-center">
+                  {/* Midtrans */}
+                  <div
+                    onClick={() => setPaymentMethod('midtrans')}
+                    className={`p-6 border-2 rounded-[2rem] flex items-center gap-4 cursor-pointer transition-all ${paymentMethod === 'midtrans' ? 'border-primary bg-primary/5 shadow-inner' : 'border-gray-50 hover:border-gray-100'}`}
+                  >
+                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${paymentMethod === 'midtrans' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-400'}`}>
+                      <CreditCard size={20} />
+                    </div>
+                    <div className="flex-1">
+                      <span className="font-bold block">Pembayaran Otomatis</span>
+                      <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">E-Wallet, QRIS, Virtual Account</span>
+                    </div>
+                    {paymentMethod === 'midtrans' && <CheckCircle2 className="text-primary" size={20} />}
+                  </div>
+
+                  {/* Cashier */}
+                  <div
+                    onClick={() => setPaymentMethod('cashier')}
+                    className={`p-6 border-2 rounded-[2rem] flex items-center gap-4 cursor-pointer transition-all ${paymentMethod === 'cashier' ? 'border-primary bg-primary/5 shadow-inner' : 'border-gray-50 hover:border-gray-100'}`}
+                  >
+                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${paymentMethod === 'cashier' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-400'}`}>
                       <Truck size={20} />
                     </div>
-                    <div>
-                      <span className="font-bold block">Next Day Delivery</span>
-                      <span className="text-xs text-primary font-bold uppercase tracking-widest">Free Shipping</span>
+                    <div className="flex-1">
+                      <span className="font-bold block">Bayar di Kasir</span>
+                      <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Tunai / QRIS Statis di Counter</span>
                     </div>
-                    <div className="ml-auto font-black text-xl">Rp 0</div>
+                    {paymentMethod === 'cashier' && <CheckCircle2 className="text-primary" size={20} />}
                   </div>
                 </div>
 
                 <div className="pt-10 flex flex-col gap-4">
-                  <button 
+                  <button
                     disabled={loading}
                     onClick={handlePayment}
                     className="w-full bg-primary text-white py-6 rounded-full font-black text-xl shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-4 disabled:opacity-50"
                   >
-                    {loading ? <Loader2 className="animate-spin" /> : <ShieldCheck />} 
-                    {loading ? 'Processing...' : 'Pay with Midtrans'}
+                    {loading ? <Loader2 className="animate-spin" /> : <ShieldCheck />}
+                    {loading ? 'Processing...' : paymentMethod === 'cashier' ? 'Konfirmasi Pesanan' : 'Lanjut ke Pembayaran'}
                   </button>
-                  <button 
+                  <button
                     disabled={loading}
                     onClick={() => setStep(1)}
                     className="text-gray-400 font-bold hover:text-gray-600 flex items-center justify-center gap-2 py-2"
@@ -390,21 +449,41 @@ export default function Checkout() {
                   <CheckCircle2 size={56} />
                 </div>
                 <div>
-                  <h2 className="text-4xl font-black text-[#1a1a1a] mb-4 tracking-tight">Order Confirmed!</h2>
+                  <h2 className="text-4xl font-black text-[#1a1a1a] mb-4 tracking-tight">
+                    {user ? 'Order Confirmed!' : 'Terima Kasih!'}
+                  </h2>
                   <p className="text-gray-400 font-medium max-w-xs mx-auto leading-relaxed">
-                    Your coffee beans are already being roasted. Grab your tracking code below.
+                    {user 
+                      ? 'Your coffee beans are already being roasted. Grab your tracking code below.'
+                      : 'Pesanan Anda sedang kami siapkan. Silakan tunjukkan Nama Pemesan ke Barista/Kasir.'}
                   </p>
                 </div>
-                
-                <div className="bg-gray-50 p-6 rounded-3xl border border-dashed border-gray-200 inline-block font-mono text-lg font-black tracking-widest text-primary">
-                  #{orderId?.slice(0, 8).toUpperCase()}
-                </div>
 
-                <div className="pt-4 flex flex-col gap-4">
-                  <Link href={`/order/tracking/${orderId}`} className="inline-flex items-center justify-center gap-2 px-12 py-5 bg-primary text-white rounded-full font-bold shadow-xl shadow-primary/20 hover:scale-105 transition-transform">
-                    Track Live Progress <ArrowLeft className="rotate-180" size={18} />
-                  </Link>
-                  <Link href="/dashboard" className="text-gray-400 font-bold hover:text-primary transition-colors">Go to My Dashboard</Link>
+                {user && (
+                  <div className="bg-gray-50 p-6 rounded-3xl border border-dashed border-gray-200 inline-block font-mono text-lg font-black tracking-widest text-primary">
+                    #{orderId?.slice(0, 8).toUpperCase()}
+                  </div>
+                )}
+
+                <div className="pt-4 flex flex-col gap-4 items-center">
+                  {user ? (
+                    <>
+                      <Link href={`/order/tracking/${orderId}`} className="inline-flex items-center justify-center gap-2 px-12 py-5 bg-primary text-white rounded-full font-bold shadow-xl shadow-primary/20 hover:scale-105 transition-transform w-full">
+                        Track Live Progress <ArrowLeft className="rotate-180" size={18} />
+                      </Link>
+                      <Link href="/dashboard" className="text-gray-400 font-bold hover:text-primary transition-colors">Go to My Dashboard</Link>
+                    </>
+                  ) : (
+                    <>
+                      <Link href="/menu" className="inline-flex items-center justify-center gap-2 px-12 py-5 bg-primary text-white rounded-full font-bold shadow-xl shadow-primary/20 hover:scale-105 transition-transform w-full">
+                        Pesan Lagi <ArrowLeft className="rotate-180" size={18} />
+                      </Link>
+                      <div className="flex flex-col items-center gap-2 pt-4">
+                        <p className="text-xs text-gray-400 font-medium">Mau kumpulkan poin dari pesanan ini?</p>
+                        <Link href="/register" className="text-sm font-black text-primary underline underline-offset-4">Daftar Akun Sekarang</Link>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -418,15 +497,15 @@ export default function Checkout() {
                   <Package className="text-gray-300" size={20} />
                   <h3 className="text-xl font-black uppercase tracking-widest text-[#1a1a1a]">Order Summary</h3>
                 </div>
-                
+
                 <div className="space-y-4 mb-10 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
                   {cart.map(item => (
                     <div key={item.id} className="flex justify-between items-center gap-4 group">
                       <div className="flex items-center gap-3">
-                         <div className="h-10 w-10 bg-gray-50 rounded-xl flex items-center justify-center text-xs font-black text-gray-400 border border-gray-100 italic">
-                           x{item.quantity}
-                         </div>
-                         <div className="font-bold text-sm group-hover:text-primary transition-colors">{item.name}</div>
+                        <div className="h-10 w-10 bg-gray-50 rounded-xl flex items-center justify-center text-xs font-black text-gray-400 border border-gray-100 italic">
+                          x{item.quantity}
+                        </div>
+                        <div className="font-bold text-sm group-hover:text-primary transition-colors">{item.name}</div>
                       </div>
                       <div className="text-sm font-black whitespace-nowrap">Rp {(item.price * item.quantity).toLocaleString('id-ID')}</div>
                     </div>
@@ -461,16 +540,16 @@ export default function Checkout() {
                       <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors">
                         <Ticket size={20} />
                       </div>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={voucherCode}
                         onChange={(e) => setVoucherCode(e.target.value)}
                         placeholder="MASUKKAN KODE VOUCHER"
                         className="w-full pl-14 pr-5 h-16 bg-gray-50/50 rounded-2xl border-2 border-transparent focus:border-primary/20 focus:bg-white outline-none font-black uppercase text-sm transition-all placeholder:text-gray-300 tracking-widest shadow-sm"
                       />
                     </div>
-                    
-                    <button 
+
+                    <button
                       onClick={handleApplyVoucher}
                       disabled={checkingVoucher || !voucherCode}
                       className="w-full h-14 bg-[#1a1a1a] text-white rounded-2xl font-black text-sm hover:bg-black hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-20 disabled:hover:scale-100 shadow-xl shadow-black/10 flex items-center justify-center gap-2 group"
@@ -501,7 +580,7 @@ export default function Checkout() {
 
                 {availablePoints > 0 && (
                   <div className="mt-6 pt-6 border-t border-gray-50">
-                    <div 
+                    <div
                       onClick={() => setUsePoints(!usePoints)}
                       className={`p-5 rounded-[2rem] border-2 transition-all cursor-pointer flex items-center justify-between ${usePoints ? 'border-primary bg-primary/5 shadow-inner' : 'border-gray-50 hover:border-gray-100'}`}
                     >

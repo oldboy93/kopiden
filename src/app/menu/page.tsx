@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useSearchParams } from 'next/navigation';
 import { ChevronRight, Filter, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCart } from '@/context/CartContext';
@@ -10,7 +11,8 @@ import AppHeader from '@/components/AppHeader';
 import MenuDetailModal from '@/components/MenuDetailModal';
 
 export default function Menu() {
-  const { addToCart, totalItems } = useCart();
+  const { addToCart, totalItems, setTableNumber, tableNumber } = useCart();
+  const searchParams = useSearchParams();
   const [categories, setCategories] = useState(['All', 'Coffee', 'Non-Coffee', 'Snacks']);
   const [activeCategory, setActiveCategory] = useState('All');
   const [menuItems, setMenuItems] = useState<any[]>([]);
@@ -37,6 +39,13 @@ export default function Menu() {
     fetchMenu();
     checkUser();
   }, [activeCategory]);
+
+  useEffect(() => {
+    const table = searchParams.get('table');
+    if (table) {
+      setTableNumber(table);
+    }
+  }, [searchParams, setTableNumber]);
 
   const handleOpenDetail = (item: any) => {
     setSelectedItem(item);
