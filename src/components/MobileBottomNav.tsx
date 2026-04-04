@@ -12,6 +12,7 @@ export default function MobileBottomNav() {
   // Hide nav on these routes
   if (
     pathname.startsWith('/admin') ||
+    pathname.startsWith('/cashier') ||
     pathname.startsWith('/login') ||
     pathname.startsWith('/register')
   ) {
